@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan — ElBot Home Asisten</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Fira Sans', 'system-ui', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        danger: '#EF4444',
+                    },
+                },
+            },
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="/" class="p-2 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" aria-label="Kembali">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </a>
+                <h1 class="text-lg font-semibold">Pengaturan</h1>
+            </div>
+            <a href="/" class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                    <i data-lucide="bot" class="w-5 h-5 text-white"></i>
+                </div>
+            </a>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="fixed top-16 left-0 right-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex gap-0">
+                <button class="tab-btn active px-4 py-3 text-sm font-medium border-b-2 border-primary text-primary transition-colors cursor-pointer" data-tab="devices">
+                    <i data-lucide="cpu" class="w-4 h-4 inline mr-2"></i>Perangkat
+                </button>
+                <button class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors cursor-pointer" data-tab="firmware">
+                    <i data-lucide="upload" class="w-4 h-4 inline mr-2"></i>Firmware
+                </button>
+                <button class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors cursor-pointer" data-tab="general">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4 inline mr-2"></i>Umum
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Tab Content -->
+    <main class="pt-32 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+
+        <!-- Tab: Perangkat -->
+        <section id="tab-devices" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Manajemen Perangkat</h2>
+                <button
+                    id="addDeviceBtn"
+                    class="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
+                    onclick="openDeviceModal()"
+                >
+                    <i data-lucide="plus" class="w-4 h-4"></i>Tambah Perangkat
+                </button>
+            </div>
+
+            <!-- Device Table -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-700">
+                                <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 uppercase">Perangkat</th>
+                                <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 uppercase">Ruangan</th>
+                                <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 uppercase">Tipe</th>
+                                <th class="text-center px-6 py-4 text-xs font-medium text-slate-400 uppercase">Status</th>
+                                <th class="text-center px-6 py-4 text-xs font-medium text-slate-400 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceTableBody" class="divide-y divide-slate-700">
+                            <!-- Rows rendered by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noDevices" class="hidden px-6 py-12 text-center text-slate-400">
+                    <i data-lucide="plug" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                    <p>Belum ada perangkat terdaftar</p>
+                    <p class="text-sm">Klik "Tambah Perangkat" untuk memulai</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Firmware -->
+        <section id="tab-firmware" class="tab-content hidden">
+            <h2 class="text-xl font-semibold mb-6">OTA Firmware Update</h2>
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                <h3 class="text-sm font-medium text-slate-300 mb-4">Upload Firmware Baru</h3>
+                <form id="firmwareForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2" for="targetDevice">Perangkat Target</label>
+                        <select id="targetDevice" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer">
+                            <option value="">Pilih perangkat...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2" for="firmwareFile">File Firmware (.bin)</label>
+                        <div class="relative">
+                            <input type="file" id="firmwareFile" accept=".bin" onchange="handleFileSelect(event)"
+                                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary cursor-pointer file:hidden">
+                            <div id="filePreview" class="hidden mt-2 p-3 bg-slate-900 rounded-lg text-sm">
+                                <span id="fileName" class="text-slate-300"></span>
+                                <span id="fileSize" class="text-slate-500 ml-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="uploadProgress" class="hidden">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-slate-400">Progress Upload</span>
+                            <span id="progressPercent" class="text-slate-300">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-2">
+                            <div id="progressBar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <button type="submit" id="uploadBtn"
+                            class="px-6 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i data-lucide="upload" class="w-4 h-4"></i>Upload & Kirim
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Tab: Umum -->
+        <section id="tab-general" class="tab-content hidden">
+            <h2 class="text-xl font-semibold mb-6">Pengaturan Umum</h2>
+            <div class="space-y-6">
+                <div class="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                    <h3 class="text-sm font-medium text-slate-300 mb-4">Koneksi MQTT Broker</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Host</label>
+                            <input type="text" value="localhost" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Port</label>
+                            <input type="text" value="1883" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-400">
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                    <h3 class="text-sm font-medium text-slate-300 mb-4">Tentang ElBot</h3>
+                    <div class="text-sm text-slate-400 space-y-1">
+                        <p>Versi: 1.0.0</p>
+                        <p>AI Model: mmf/mimo-auto</p>
+                        <p>TTS Voice: id-ID-GadisNeural</p>
+                        <p>STT: Google Speech API</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Device Modal (Hidden by default) -->
+    <div id="deviceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeDeviceModal()"></div>
+        <div class="relative bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-semibold" id="modalTitle">Tambah Perangkat</h3>
+                <button onclick="closeDeviceModal()" class="p-1 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="deviceForm" class="space-y-4">
+                <input type="hidden" id="deviceIdOriginal">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1.5" for="dDeviceId">Device ID</label>
+                    <input type="text" id="dDeviceId" required placeholder="esp32-ruang-tamu"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                           pattern="[a-zA-Z0-9_-]+">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1.5" for="dName">Nama Perangkat</label>
+                    <input type="text" id="dName" required placeholder="Lampu Ruang Tamu"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1.5" for="dRoom">Ruangan</label>
+                    <input type="text" id="dRoom" required placeholder="Ruang Tamu"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1.5" for="dType">Tipe</label>
+                    <select id="dType" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary cursor-pointer">
+                        <option value="relay">Relay</option>
+                        <option value="lampu">Lampu</option>
+                        <option value="sensor">Sensor</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1.5" for="dRelayCount">Jumlah Relay</label>
+                    <input type="number" id="dRelayCount" value="4" min="1" max="16"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" id="modalSubmitBtn"
+                            class="flex-1 px-4 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                        Simpan
+                    </button>
+                    <button type="button" onclick="closeDeviceModal()"
+                            class="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                        Batal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/settings.js" type="module"></script>
+</body>
+</html>

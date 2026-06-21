@@ -1,8 +1,11 @@
 # backend/app/main.py
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
+from pathlib import Path
 from app.config import get_settings
 from app.db.init_db import init_db
 from app.core.mqtt_service import MQTTService
@@ -132,8 +135,26 @@ app.include_router(
 )
 
 
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+
+
+@app.get("/login")
+async def login_page():
+    return FileResponse(FRONTEND_DIR / "login.html")
+
+
+@app.get("/settings")
+async def settings_page(request: Request):
+    return FileResponse(FRONTEND_DIR / "settings.html")
+
+
 @app.get("/")
-async def root():
+async def index_page(request: Request):
+    return FileResponse(FRONTEND_DIR / "index.html")
+
+
+@app.get("/api/hello")
+async def api_hello():
     return {"message": "ElBot Backend API", "version": "1.0.0"}
 
 
@@ -145,6 +166,11 @@ async def health_check():
         "status": "healthy",
         "mqtt_connected": mqtt_connected,
     }
+
+
+# Serve static files
+static_dir = FRONTEND_DIR / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 def get_mqtt_service() -> MQTTService:

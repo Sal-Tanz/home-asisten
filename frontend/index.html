@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElBot Home Asisten</title>
+
+    <!-- Fonts: Fira Code + Fira Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Fira Sans', 'system-ui', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        danger: '#EF4444',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'waveform': 'waveform 1.5s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        waveform: {
+                            '0%, 100%': { transform: 'scaleY(0.5)' },
+                            '50%': { transform: 'scaleY(1)' },
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                    <i data-lucide="bot" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-semibold">ElBot</h1>
+                    <p class="text-xs text-slate-400">Home Asisten</p>
+                </div>
+            </div>
+
+            <!-- Status & Actions -->
+            <div class="flex items-center gap-4">
+                <!-- Connection Status -->
+                <div id="connectionStatus" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg text-sm">
+                    <span class="w-2 h-2 bg-secondary rounded-full animate-pulse"></span>
+                    <span class="text-slate-300">Terhubung</span>
+                </div>
+
+                <!-- Settings Link -->
+                <a href="/settings.html" class="p-2 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" aria-label="Pengaturan">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-16 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+
+        <!-- Device Quick Status Panel -->
+        <section class="mt-6 mb-8">
+            <h2 class="text-sm font-medium text-slate-400 mb-3">Perangkat Aktif</h2>
+            <div id="devicePanel" class="flex gap-3 overflow-x-auto pb-2">
+                <!-- Device cards will be rendered here -->
+                <div class="flex-shrink-0 w-32 h-24 bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col justify-between hover:border-slate-600 transition-colors cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <i data-lucide="lightbulb" class="w-5 h-5 text-slate-400"></i>
+                        <span class="w-2 h-2 bg-secondary rounded-full"></span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium truncate">Lampu Ruang Tamu</p>
+                        <p class="text-xs text-slate-400">ON</p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-32 h-24 bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col justify-between hover:border-slate-600 transition-colors cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <i data-lucide="fan" class="w-5 h-5 text-slate-400"></i>
+                        <span class="w-2 h-2 bg-danger rounded-full"></span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium truncate">AC Kamar</p>
+                        <p class="text-xs text-slate-400">OFF</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat Container -->
+        <section class="mb-6">
+            <div id="chatContainer" class="space-y-4 min-h-[400px]">
+                <!-- Chat messages will be rendered here -->
+
+                <!-- Bot Welcome Message -->
+                <div class="flex gap-3 max-w-2xl">
+                    <div class="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i data-lucide="bot" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-slate-800 rounded-2xl rounded-tl-none px-4 py-3">
+                            <p class="text-sm leading-relaxed">Halo! Saya ElBot, asisten rumah pintar Anda. Saya bisa membantu mengontrol perangkat di rumah. Coba katakan "Nyalakan lampu ruang tamu" atau tanyakan status perangkat.</p>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">ElBot • Baru saja</p>
+                    </div>
+                </div>
+
+                <!-- User Message Example -->
+                <div class="flex gap-3 max-w-2xl ml-auto flex-row-reverse">
+                    <div class="flex-shrink-0 w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center">
+                        <i data-lucide="user" class="w-5 h-5 text-slate-300"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-primary rounded-2xl rounded-tr-none px-4 py-3">
+                            <p class="text-sm leading-relaxed">Nyalakan lampu kamar tidur</p>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1 text-right">Anda • 2 menit lalu</p>
+                    </div>
+                </div>
+
+                <!-- Bot Response with Action -->
+                <div class="flex gap-3 max-w-2xl">
+                    <div class="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i data-lucide="bot" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-slate-800 rounded-2xl rounded-tl-none px-4 py-3">
+                            <p class="text-sm leading-relaxed mb-2">Baik, saya sudah menyalakan lampu kamar tidur untuk Anda.</p>
+                            <div class="flex items-center gap-2 px-3 py-2 bg-secondary/20 border border-secondary/30 rounded-lg">
+                                <i data-lucide="check-circle" class="w-4 h-4 text-secondary"></i>
+                                <span class="text-xs text-secondary font-medium">Lampu Kamar Tidur dinyalakan</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">ElBot • 1 menit lalu</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Voice Indicator -->
+        <div id="voiceIndicator" class="hidden mb-6">
+            <div class="flex items-center justify-center gap-3 py-4 bg-slate-800/50 border border-slate-700 rounded-xl">
+                <div class="flex items-center gap-1">
+                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0s"></div>
+                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.2s"></div>
+                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.4s"></div>
+                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.6s"></div>
+                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.8s"></div>
+                </div>
+                <p class="text-sm text-slate-300" id="voiceStatus">Mendengarkan...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Input Area (Fixed Bottom) -->
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 p-4 z-40">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex gap-2 items-end">
+                <!-- Text Input -->
+                <div class="flex-1 relative">
+                    <textarea
+                        id="messageInput"
+                        rows="1"
+                        placeholder="Ketik pesan atau tekan tombol mikrofon..."
+                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none transition-all"
+                        aria-label="Ketik pesan"
+                    ></textarea>
+                </div>
+
+                <!-- Mic Button -->
+                <button
+                    id="micButton"
+                    class="flex-shrink-0 w-12 h-12 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center justify-center transition-all cursor-pointer group"
+                    aria-label="Mulai bicara"
+                >
+                    <i data-lucide="mic" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                </button>
+
+                <!-- Send Button -->
+                <button
+                    id="sendButton"
+                    class="flex-shrink-0 w-12 h-12 bg-primary hover:bg-primary/90 rounded-xl flex items-center justify-center transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Kirim pesan"
+                >
+                    <i data-lucide="send" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mt-2 text-center">
+                Tekan tombol mikrofon atau ketik pesan untuk berinteraksi dengan ElBot
+            </p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/app.js" type="module"></script>
+</body>
+</html>
