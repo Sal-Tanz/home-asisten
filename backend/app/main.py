@@ -11,6 +11,54 @@ from app.auth import router as auth_router, get_current_user
 
 settings = get_settings()
 
+
+async def handle_status_message(topic: str, payload: dict):
+    """Handle incoming MQTT status messages and update device state in database"""
+    from app.db.database import AsyncSessionLocal
+    from app.devices.crud import update_device_state
+    from datetime import datetime
+
+    # Extract device_id from topic: elbot/<device_id>/status
+    parts = topic.split("/")
+    if len(parts) != 3:
+        return
+
+    device_id = parts[1]
+
+    # Extract relay states from payload (keys starting with "relay_")
+    relay_states = {
+        k: v for k, v in payload.items()
+        if k.startswith("relay_")
+    }
+
+    if relay_states:
+        async with AsyncSessionLocal() as db:
+            device = await update_device_state(db, device_id, relay_states)
+            if device:
+                device.last_seen = datetime.utcnow()
+                await db.commit()
+
+
+async def handle_lwt_message(topic: str, payload: dict):
+    """Handle LWT (online/offline) messages and update device online status"""
+    from app.db.database import AsyncSessionLocal
+    from app.devices.crud import get_device
+
+    # Extract device_id from topic: elbot/<device_id>/lwt
+    parts = topic.split("/")
+    if len(parts) != 3:
+        return
+
+    device_id = parts[1]
+    status = payload.get("status")
+
+    async with AsyncSessionLocal() as db:
+        device = await get_device(db, device_id)
+        if device:
+            device.is_online = (status == "online")
+            await db.commit()
+
+
 # Global MQTT service instance
 mqtt_service: MQTTService = None
 
@@ -34,6 +82,10 @@ async def lifespan(app: FastAPI):
 
     # Store in app state for access in routes
     app.state.mqtt_service = mqtt_service
+
+    # Setup message handlers
+    mqtt_service.on_status_message = handle_status_message
+    mqtt_service.on_lwt_message = handle_lwt_message
 
     # Connect to MQTT broker (non-blocking, will retry if fails)
     try:
