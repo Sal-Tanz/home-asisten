@@ -1,65 +1,45 @@
-# backend/app/devices/schemas.py
-import re
+from pydantic import BaseModel, Field
+from typing import Optional, Dict
 from datetime import datetime
-from typing import Dict, Optional
-from pydantic import BaseModel, Field, field_validator
 
 
 class DeviceCreate(BaseModel):
-    device_id: str = Field(..., min_length=1, max_length=100)
-    name: str = Field(..., min_length=1, max_length=200)
-    room: str = Field(..., min_length=1, max_length=100)
-    type: str = Field(..., min_length=1, max_length=50)
-    relay_count: int = Field(default=4, ge=1, le=16)
-
-    @field_validator("device_id")
-    @classmethod
-    def validate_device_id(cls, v: str) -> str:
-        if not re.match(r"^[a-zA-Z0-9_-]+$", v):
-            raise ValueError("device_id must contain only letters, numbers, hyphens, and underscores")
-        return v
-
-    @field_validator("type")
-    @classmethod
-    def validate_type(cls, v: str) -> str:
-        allowed = ["relay", "lampu", "sensor"]
-        if v not in allowed:
-            raise ValueError(f"type must be one of: {allowed}")
-        return v
+    """Schema for creating a new device"""
+    device_id: str = Field(..., description="Unique device identifier (e.g., ESP32 MAC)")
+    name: str = Field(..., description="Human-readable device name")
+    room: str = Field(..., description="Room location")
+    type: str = Field(default="relay", description="Device type")
+    relay_count: int = Field(default=4, ge=1, le=8, description="Number of relays")
 
 
 class DeviceUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    room: Optional[str] = Field(None, min_length=1, max_length=100)
+    """Schema for updating device fields (all optional)"""
+    name: Optional[str] = None
+    room: Optional[str] = None
     type: Optional[str] = None
-
-    @field_validator("type")
-    @classmethod
-    def validate_type(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None:
-            allowed = ["relay", "lampu", "sensor"]
-            if v not in allowed:
-                raise ValueError(f"type must be one of: {allowed}")
-        return v
+    relay_count: Optional[int] = Field(None, ge=1, le=8)
+    is_online: Optional[bool] = None
 
 
 class DeviceControlRequest(BaseModel):
-    relay: str = Field(..., pattern=r"^relay_\d+$")
-    action: str = Field(..., pattern=r"^(ON|OFF|TOGGLE)$")
+    """Schema for controlling device relays"""
+    relay: str = Field(..., description="Relay identifier (e.g., 'relay_1')")
+    action: str = Field(..., description="Action to perform: 'ON' or 'OFF'")
 
 
 class DeviceResponse(BaseModel):
+    """Schema for device response"""
     id: int
     device_id: str
     name: str
     room: str
     type: str
     relay_count: int
-    state: Dict[str, str]
+    state: str  # JSON string
     is_online: bool
-    last_seen: Optional[datetime] = None
+    last_seen: Optional[datetime]
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: Optional[datetime]
 
     class Config:
         from_attributes = True
