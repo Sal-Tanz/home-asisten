@@ -432,17 +432,18 @@ void setup() {
 // MAIN LOOP
 // ═══════════════════════════════════════════════════
 void loop() {
-  // Reconnect MQTT if needed
-  if (!mqttClient.connected()) {
-    reconnectMQTT();
-    delay(1000);
-    return;
-  }
-
   mqttClient.loop();
 
-  // Periodic status
   unsigned long now = millis();
+
+  // Non-blocking MQTT reconnect with 5s backoff
+  static unsigned long lastReconnectAttempt = 0;
+  if (!mqttClient.connected() && (now - lastReconnectAttempt > 5000)) {
+    lastReconnectAttempt = now;
+    reconnectMQTT();
+  }
+
+  // Periodic status publish
   if (now - lastStatusTime >= STATUS_INTERVAL) {
     lastStatusTime = now;
     publishStatus();
@@ -454,12 +455,5 @@ void loop() {
       preferences.putString(key.c_str(), relayStates[i]);
     }
     preferences.end();
-  }
-
-  // Client-side MQTT reconnect with backoff
-  static unsigned long lastReconnect = 0;
-  if (!mqttClient.connected() && (now - lastReconnect > 5000)) {
-    lastReconnect = now;
-    reconnectMQTT();
   }
 }
