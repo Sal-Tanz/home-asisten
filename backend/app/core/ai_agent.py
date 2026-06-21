@@ -4,17 +4,20 @@ import json
 from typing import List, Dict, Any, Callable, Optional
 from openai import AsyncOpenAI
 
+from app.config import get_settings
+
 
 class AIAgent:
     """AI Agent for handling chat completions with streaming and tool execution."""
 
     def __init__(self):
         """Initialize AI Agent with custom OpenAI-compatible endpoint."""
+        settings = get_settings()
         self.client = AsyncOpenAI(
-            base_url="https://api-ai.elektrounsub.com/v1",
-            api_key="sk-f86cd6ad61e2754f-tb3cn0-8412a37b"
+            base_url=settings.ai_api_base_url,
+            api_key=settings.ai_api_key
         )
-        self.model = "mmf/mimo-auto"
+        self.model = settings.ai_model_name
 
     async def stream_with_tools(
         self,

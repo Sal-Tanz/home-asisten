@@ -9,11 +9,9 @@ from typing import Optional
 import aiofiles
 import requests
 
-logger = logging.getLogger(__name__)
+from app.config import get_settings
 
-# Google Speech API v2 configuration
-GOOGLE_STT_KEY = "AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw"
-GOOGLE_STT_URL = "https://www.google.com/speech-api/v2/recognize"
+logger = logging.getLogger(__name__)
 
 # Persistent HTTP session (connection pooling)
 _stt_session = requests.Session()
@@ -26,8 +24,10 @@ _stt_session.headers.update({
 class STTService:
     """Speech-to-Text service using Google Speech API v2."""
 
-    def __init__(self, api_key: str = GOOGLE_STT_KEY):
-        self.api_key = api_key
+    def __init__(self):
+        settings = get_settings()
+        self.api_key = settings.google_stt_key
+        self.api_url = settings.google_stt_url
         self.session = _stt_session
 
     async def transcribe(self, audio_data: bytes, audio_format: str = "webm") -> dict:
@@ -106,7 +106,7 @@ class STTService:
 
     async def _call_google_stt(self, flac_data: bytes) -> tuple[str, float]:
         """Call Google Speech API v2 with FLAC audio."""
-        url = f"{GOOGLE_STT_URL}?key={self.api_key}&lang=id-ID"
+        url = f"{self.api_url}?key={self.api_key}&lang=id-ID"
 
         # Run requests in thread pool (blocking I/O)
         loop = asyncio.get_event_loop()

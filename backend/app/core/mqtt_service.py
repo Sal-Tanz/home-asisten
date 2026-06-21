@@ -26,6 +26,9 @@ class MQTTService:
         # Message queue for async processing
         self.message_queue = asyncio.Queue()
 
+        # Save event loop reference for thread-safe callbacks
+        self._loop = asyncio.get_event_loop()
+
         # Callback for status messages
         self.on_status_message: Optional[Callable] = None
         self.on_lwt_message: Optional[Callable] = None
@@ -64,7 +67,7 @@ class MQTTService:
             # Queue message for async processing
             asyncio.run_coroutine_threadsafe(
                 self.message_queue.put((topic, payload)),
-                asyncio.get_event_loop()
+                self._loop
             )
 
             # Route to appropriate handler
@@ -72,13 +75,13 @@ class MQTTService:
                 if self.on_status_message:
                     asyncio.run_coroutine_threadsafe(
                         self.on_status_message(topic, payload),
-                        asyncio.get_event_loop()
+                        self._loop
                     )
             elif "/lwt" in topic:
                 if self.on_lwt_message:
                     asyncio.run_coroutine_threadsafe(
                         self.on_lwt_message(topic, payload),
-                        asyncio.get_event_loop()
+                        self._loop
                     )
 
         except Exception as e:

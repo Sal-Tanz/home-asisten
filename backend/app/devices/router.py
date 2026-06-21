@@ -2,10 +2,13 @@
 import json
 import base64
 import hashlib
+import asyncio
+import re
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
+from app.auth import get_current_user
 from app.devices.crud import (
     create_device,
     get_device,
@@ -23,7 +26,10 @@ from app.devices.schemas import (
     DeviceControlRequest,
 )
 
-router = APIRouter(tags=["devices"])
+router = APIRouter(
+    tags=["devices"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.post("/devices", response_model=DeviceResponse)
@@ -46,8 +52,8 @@ async def create_device_endpoint(
 
 @router.get("/devices", response_model=List[DeviceResponse])
 async def get_devices_endpoint(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all devices"""
@@ -99,6 +105,14 @@ async def delete_device_endpoint(
     return {"message": "Device deleted successfully"}
 
 
+def _safe_parse_state(state_str: str) -> dict:
+    """Safely parse device state JSON, returns empty dict on error."""
+    try:
+        return json.loads(state_str)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
 @router.post("/devices/{device_id}/control")
 async def control_device_endpoint(
     device_id: str,
@@ -123,20 +137,13 @@ async def control_device_endpoint(
 
     # Calculate new state if TOGGLE
     action = control_data.action
+    current_state = _safe_parse_state(device.state)
+
     if action == "TOGGLE":
-        current_state = json.loads(device.state)
         current_value = current_state.get(control_data.relay, "OFF")
         action = "OFF" if current_value == "ON" else "ON"
 
-    # Publish command via MQTT
-    await mqtt_service.publish_command(
-        device_id=device_id,
-        relay=control_data.relay,
-        action=action,
-    )
-
-    # Update device state
-    current_state = json.loads(device.state)
+    # Single DB session: update state AND log action atomically
     current_state[control_data.relay] = action
     await update_device_state(db, device_id, current_state)
 
@@ -147,6 +154,13 @@ async def control_device_endpoint(
         relay=control_data.relay,
         action=action,
         source="manual",
+    )
+
+    # Publish command via MQTT (after DB update)
+    await mqtt_service.publish_command(
+        device_id=device_id,
+        relay=control_data.relay,
+        action=action,
     )
 
     return {
@@ -160,8 +174,8 @@ async def control_device_endpoint(
 @router.get("/devices/{device_id}/logs")
 async def get_device_logs_endpoint(
     device_id: str,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
     """Get action logs for a device"""
@@ -182,11 +196,11 @@ async def upload_firmware(
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Upload firmware untuk OTA update via MQTT"""
+    """Upload firmware for OTA update via MQTT"""
     device = await get_device(db, device_id)
 
     if not device:
-        raise HTTPException(status_code=404, detail="Device tidak ditemukan")
+        raise HTTPException(status_code=404, detail="Device not found")
 
     # Get MQTT service
     mqtt_service = request.app.state.mqtt_service
@@ -194,7 +208,7 @@ async def upload_firmware(
     if not mqtt_service or not mqtt_service.is_connected():
         raise HTTPException(
             status_code=503,
-            detail="MQTT broker tidak terhubung",
+            detail="MQTT broker not connected",
         )
 
     # Read firmware file
@@ -202,10 +216,10 @@ async def upload_firmware(
 
     # Validate file
     if not firmware_data:
-        raise HTTPException(status_code=400, detail="File firmware kosong")
+        raise HTTPException(status_code=400, detail="Firmware file is empty")
 
     if len(firmware_data) > 2 * 1024 * 1024:  # Max 2MB
-        raise HTTPException(status_code=400, detail="File firmware terlalu besar (max 2MB)")
+        raise HTTPException(status_code=400, detail="Firmware file too large (max 2MB)")
 
     # Calculate MD5 hash
     md5_hash = hashlib.md5(firmware_data).hexdigest()
@@ -233,7 +247,6 @@ async def upload_firmware(
         await mqtt_service.publish_raw(topic, json.dumps(payload))
 
         # Small delay to prevent overwhelming ESP32
-        import asyncio
         await asyncio.sleep(0.05)  # 50ms delay
 
     return {

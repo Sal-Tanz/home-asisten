@@ -4,26 +4,20 @@ from typing import Callable, Awaitable
 
 import edge_tts
 
-logger = logging.getLogger(__name__)
+from app.config import get_settings
 
-# Default Indonesian female voice
-DEFAULT_VOICE = "id-ID-GadisNeural"
+logger = logging.getLogger(__name__)
 
 
 class TTSService:
     """Text-to-Speech service using Microsoft Edge TTS."""
 
-    def __init__(self, voice: str = DEFAULT_VOICE, rate: str = "+0%", volume: str = "+0%"):
-        """Initialize TTS service.
-
-        Args:
-            voice: Edge TTS voice identifier
-            rate: Speech rate adjustment (e.g., "+10%", "-20%")
-            volume: Volume adjustment (e.g., "+10%", "-20%")
-        """
-        self.voice = voice
-        self.rate = rate
-        self.volume = volume
+    def __init__(self):
+        """Initialize TTS service."""
+        settings = get_settings()
+        self.voice = settings.tts_voice
+        self.rate = settings.tts_rate
+        self.volume = settings.tts_volume
 
     async def synthesize_stream(
         self,
