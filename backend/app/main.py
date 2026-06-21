@@ -8,6 +8,8 @@ from app.db.init_db import init_db
 from app.core.mqtt_service import MQTTService
 from app.devices.router import router as devices_router
 from app.auth import router as auth_router, get_current_user
+import socketio
+from app.chat.router import sio
 
 settings = get_settings()
 
@@ -148,3 +150,8 @@ async def health_check():
 def get_mqtt_service() -> MQTTService:
     """Dependency for getting MQTT service"""
     return mqtt_service
+
+
+# Wrap FastAPI with Socket.IO ASGI app
+# Socket.IO handles /socket.io/* paths, FastAPI handles everything else
+app = socketio.ASGIApp(sio, other_asgi_app=app)
