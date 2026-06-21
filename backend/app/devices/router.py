@@ -1,7 +1,9 @@
 # backend/app/devices/router.py
 import json
+import base64
+import hashlib
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.devices.crud import (
@@ -171,3 +173,72 @@ async def get_device_logs_endpoint(
     logs = await get_device_logs(db, device_id, skip=skip, limit=limit)
 
     return logs
+
+
+@router.post("/devices/{device_id}/firmware")
+async def upload_firmware(
+    device_id: str,
+    file: UploadFile = File(...),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload firmware untuk OTA update via MQTT"""
+    device = await get_device(db, device_id)
+
+    if not device:
+        raise HTTPException(status_code=404, detail="Device tidak ditemukan")
+
+    # Get MQTT service
+    mqtt_service = request.app.state.mqtt_service
+
+    if not mqtt_service or not mqtt_service.is_connected():
+        raise HTTPException(
+            status_code=503,
+            detail="MQTT broker tidak terhubung",
+        )
+
+    # Read firmware file
+    firmware_data = await file.read()
+
+    # Validate file
+    if not firmware_data:
+        raise HTTPException(status_code=400, detail="File firmware kosong")
+
+    if len(firmware_data) > 2 * 1024 * 1024:  # Max 2MB
+        raise HTTPException(status_code=400, detail="File firmware terlalu besar (max 2MB)")
+
+    # Calculate MD5 hash
+    md5_hash = hashlib.md5(firmware_data).hexdigest()
+
+    # Split firmware into chunks (4KB each)
+    chunk_size = 4096
+    chunks = [firmware_data[i:i + chunk_size] for i in range(0, len(firmware_data), chunk_size)]
+    total_chunks = len(chunks)
+
+    # Publish each chunk via MQTT
+    for i, chunk in enumerate(chunks):
+        # Encode chunk to base64
+        chunk_b64 = base64.b64encode(chunk).decode('utf-8')
+
+        # Create message payload
+        payload = {
+            "chunk": i,
+            "total": total_chunks,
+            "data": chunk_b64,
+            "hash": md5_hash if i == total_chunks - 1 else None
+        }
+
+        # Publish to MQTT
+        topic = f"elbot/{device_id}/ota"
+        await mqtt_service.publish_raw(topic, json.dumps(payload))
+
+        # Small delay to prevent overwhelming ESP32
+        import asyncio
+        await asyncio.sleep(0.05)  # 50ms delay
+
+    return {
+        "success": True,
+        "message": f"Firmware uploaded: {total_chunks} chunks, MD5: {md5_hash}",
+        "size": len(firmware_data),
+        "chunks": total_chunks
+    }

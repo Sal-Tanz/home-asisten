@@ -115,9 +115,8 @@ class MQTTService:
 
         topic = f"elbot/{device_id}/cmd"
         payload = {
-            "action": "set_state",
             "relay": relay,
-            "value": action,
+            "state": action.lower(),
         }
 
         loop = asyncio.get_event_loop()
@@ -127,6 +126,20 @@ class MQTTService:
         )
 
         logger.info(f"Published command to {topic}: {payload}")
+
+    async def publish_raw(self, topic: str, payload: str, qos: int = 1):
+        """Publish raw payload to a topic (for OTA and other custom messages)"""
+        if not self._connected:
+            logger.warning("Not connected to MQTT broker, cannot publish raw message")
+            return
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self.client.publish(topic, payload, qos=qos)
+        )
+
+        logger.info(f"Published raw to {topic}: {payload[:100]}...")
 
     async def subscribe_status(self):
         """Subscribe to status updates from all devices"""
