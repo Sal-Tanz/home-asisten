@@ -33,6 +33,8 @@ const char* WIFI_SSID = "YourSSID";
 const char* WIFI_PASSWORD = "YourPassword";
 const char* MQTT_BROKER = "192.168.1.100";  // Backend server IP
 const int MQTT_PORT = 1883;
+const char* MQTT_USERNAME = "";             // Leave empty if no auth
+const char* MQTT_PASSWORD = "";             // Leave empty if no auth
 const char* DEVICE_ID = "esp32_relay_01";   // Unique device ID
 
 // Relay GPIO pins (active LOW)
@@ -70,30 +72,47 @@ char* otaDecodeBuffer = NULL;
 // ═══════════════════════════════════════════════════
 
 /**
- * Base64 decode
+ * Base64 decode - standard algorithm
+ * Returns number of bytes decoded
  */
 int base64Decode(const char* input, unsigned char* output) {
   const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  int decodeTable[128];
+  for (int i = 0; i < 64; i++) decodeTable[(int)b64[i]] = i;
 
   unsigned int inputLen = strlen(input);
   unsigned int outputLen = 0;
-  unsigned int bits = 0;
-  unsigned int chars = 0;
+  unsigned int quad = 0;  // accumulated 24-bit group
+  int charsInQuad = 0;    // how many b64 chars we've read in this group
 
   for (unsigned int i = 0; i < inputLen; i++) {
     char c = input[i];
-    if (c == '=' || c == '\n' || c == '\r') continue;
+    if (c == '=') break;  // padding = end of data
 
-    int idx = 0;
-    while (idx < 64 && b64[idx] != c) idx++;
-    if (idx == 64) continue;
+    int val = decodeTable[(int)c];
+    if (val < 0 || val >= 64) continue;  // skip whitespace/non-b64 chars
 
-    bits = (bits << 6) | idx;
-    chars = (chars + 1) % 4;
+    quad = (quad << 6) | val;
+    charsInQuad++;
 
-    if (chars) {
-      output[outputLen++] = (bits >> (16 - 8 * chars)) & 0xFF;
+    if (charsInQuad == 4) {
+      // 4 b64 chars → 3 output bytes
+      output[outputLen++] = (quad >> 16) & 0xFF;
+      output[outputLen++] = (quad >> 8) & 0xFF;
+      output[outputLen++] = quad & 0xFF;
+      quad = 0;
+      charsInQuad = 0;
     }
+  }
+
+  // Handle remaining partial quad (padding case)
+  if (charsInQuad == 3) {
+    quad <<= 6;
+    output[outputLen++] = (quad >> 16) & 0xFF;
+    output[outputLen++] = (quad >> 8) & 0xFF;
+  } else if (charsInQuad == 2) {
+    quad <<= 12;
+    output[outputLen++] = (quad >> 16) & 0xFF;
   }
 
   return outputLen;
@@ -115,9 +134,10 @@ void initOTA() {
  * Handle OTA chunk from MQTT
  */
 void handleOTAChunk(JsonDocument& doc) {
-  int chunkIndex = doc["chunk_index"] | -1;
-  int totalChunks = doc["total_chunks"] | -1;
+  int chunkIndex = doc["chunk"] | -1;
+  int totalChunks = doc["total"] | -1;
   const char* data = doc["data"];
+  const char* firmwareHash = doc["hash"];
 
   if (chunkIndex < 0 || totalChunks <= 0 || !data) {
     Serial.println("OTA: Invalid chunk metadata");
@@ -239,12 +259,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   // Handle relay command
   if (topicStr.endsWith("/cmd")) {
-    const char* action = doc["action"];
-    const char* target = doc["target"];
-    const char* value = doc["value"];
+    const char* relay = doc["relay"];
+    const char* state = doc["state"];
 
-    if (action && strcmp(action, "set_state") == 0 && target && value) {
-      handleRelayCommand(target, value);
+    if (relay && state) {
+      handleRelayCommand(relay, state);
     }
   }
 
