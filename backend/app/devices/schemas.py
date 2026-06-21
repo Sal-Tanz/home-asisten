@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict
 from datetime import datetime
+import json
 
 
 class DeviceCreate(BaseModel):
@@ -35,11 +36,19 @@ class DeviceResponse(BaseModel):
     room: str
     type: str
     relay_count: int
-    state: str  # JSON string
+    state: Dict[str, str]  # Dict for API response (stored as JSON string in DB)
     is_online: bool
     last_seen: Optional[datetime]
     created_at: datetime
     updated_at: Optional[datetime]
+
+    @field_validator('state', mode='before')
+    @classmethod
+    def parse_state(cls, v):
+        """Parse state from JSON string to dict if needed"""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
     class Config:
         from_attributes = True

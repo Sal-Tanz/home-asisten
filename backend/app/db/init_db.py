@@ -1,4 +1,6 @@
 from app.db.database import engine, Base
+# Import models so they are registered with Base.metadata
+from app.devices.models import Device, ActionLog
 
 
 async def init_db():
