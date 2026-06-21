@@ -1,11 +1,13 @@
 # backend/app/main.py
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from app.config import get_settings
 from app.db.init_db import init_db
 from app.core.mqtt_service import MQTTService
 from app.devices.router import router as devices_router
+from app.auth import router as auth_router, get_current_user
 
 settings = get_settings()
 
@@ -55,6 +57,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Session middleware
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -65,7 +70,12 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(devices_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(
+    devices_router,
+    prefix="/api",
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @app.get("/")
