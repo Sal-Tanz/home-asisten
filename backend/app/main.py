@@ -1,18 +1,21 @@
 # backend/app/main.py
 from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
+import asyncio
+from datetime import datetime, timedelta
 from app.config import get_settings
 from app.db.init_db import init_db
 from app.core.mqtt_service import MQTTService
 from app.devices.router import router as devices_router
 from app.auth import router as auth_router, get_current_user
 import socketio
-from app.chat.router import sio
+from app.chat.router import sio, sessions as chat_sessions
 
 settings = get_settings()
 
@@ -65,7 +68,7 @@ async def handle_lwt_message(topic: str, payload: dict):
 
 
 # Global MQTT service instance
-mqtt_service: MQTTService = None
+mqtt_service: Optional[MQTTService] = None
 
 
 @asynccontextmanager
@@ -100,11 +103,30 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Warning: Could not connect to MQTT broker: {e}")
 
+    # Start background task for stale session cleanup
+    cleanup_task = asyncio.create_task(_cleanup_stale_sessions())
+
     yield
 
     # Shutdown
     if mqtt_service:
         await mqtt_service.disconnect()
+
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
+
+
+async def _cleanup_stale_sessions():
+    """Periodically clean up inactive chat sessions (every 5 minutes)."""
+    while True:
+        await asyncio.sleep(300)
+        cutoff = datetime.utcnow() - timedelta(minutes=10)
+        stale = [sid for sid, s in chat_sessions.items() if s.last_activity < cutoff]
+        for sid in stale:
+            chat_sessions.pop(sid, None)
 
 
 app = FastAPI(

@@ -1,4 +1,4 @@
-"""Socket.IO router for voice chat pipeline (STT → AI → TTS)."""
+"""Socket.IO router for voice chat pipeline (STT -> AI -> TTS)."""
 
 import asyncio
 import json
@@ -8,7 +8,7 @@ from typing import Dict
 import socketio
 
 from app.chat.models import ChatSession
-from app.chat.tools import TOOLS
+from app.chat.tools import TOOLS, SYSTEM_PROMPT
 from app.core.stt_service import STTService
 from app.core.tts_service import TTSService
 from app.core.ai_agent import AIAgent
@@ -45,7 +45,7 @@ async def disconnect(sid):
 
 @sio.event
 async def audio_data(sid, data):
-    """Handle incoming audio data and orchestrate STT → AI → TTS pipeline."""
+    """Handle incoming audio data and orchestrate STT -> AI -> TTS pipeline."""
     session = sessions.get(sid)
     if not session:
         logger.warning(f"No session found for {sid}")
@@ -73,17 +73,7 @@ async def audio_data(sid, data):
         # Step 2: AI Agent processing with tools
         await sio.emit('status', {'state': 'thinking'}, to=sid)
 
-        # Prepare messages with system prompt
-        system_msg = {
-            "role": "system",
-            "content": (
-                "Kamu adalah ElBot, asisten rumah pintar berbahasa Indonesia. "
-                "Kamu ramah, helpful, dan efisien. Selalu jawab dalam Bahasa Indonesia. "
-                "Untuk perintah kontrol perangkat, gunakan tools yang tersedia. "
-                "Jawaban harus singkat dan jelas (1-2 kalimat)."
-            ),
-        }
-        messages = [system_msg] + session.get_messages_as_openai_format()
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + session.get_messages_as_openai_format()
 
         response_text = ""
 
@@ -97,7 +87,6 @@ async def audio_data(sid, data):
             """Handle tool execution requests from AI."""
             tool_name = tool_call['name']
 
-            # Parse args if still string
             args = tool_call['args']
             if isinstance(args, str):
                 try:
@@ -107,67 +96,17 @@ async def audio_data(sid, data):
 
             logger.info(f"Tool call: {tool_name} with args: {args}")
 
-            # Execute tool
             if tool_name == 'list_devices':
-                from app.db.database import AsyncSessionLocal
-                from app.devices.models import Device
-                from sqlalchemy import select
-
-                async with AsyncSessionLocal() as db:
-                    result = await db.execute(select(Device).limit(100))
-                    devices = []
-                    for d in result.scalars().all():
-                        devices.append({
-                            "device_id": d.device_id,
-                            "name": d.name,
-                            "room": d.room,
-                            "state": json.loads(d.state) if d.state else {}
-                        })
-                return {"devices": devices}
+                return await _list_devices()
 
             elif tool_name == 'get_device_status':
-                from app.db.database import AsyncSessionLocal
-                from app.devices.crud import get_device
-
-                async with AsyncSessionLocal() as db:
-                    device = await get_device(db, args['device_id'])
-
-                if device:
-                    return {
-                        "device_id": device.device_id,
-                        "name": device.name,
-                        "state": json.loads(device.state)
-                    }
-                return {"error": "Device not found"}
+                return await _get_device_status(args.get('device_id', ''))
 
             elif tool_name == 'control_device':
-                from app.db.database import AsyncSessionLocal
-                from app.devices.crud import get_device, update_device_state, create_action_log
-
-                device_id = args['device_id']
-                action = args['action']
-
-                # Handle TOGGLE action
-                if action == 'TOGGLE':
-                    async with AsyncSessionLocal() as db:
-                        device = await get_device(db, device_id)
-                        if device:
-                            state = json.loads(device.state)
-                            current = state.get("relay_1", "OFF")
-                            action = "OFF" if current == "ON" else "ON"
-
-                # Update device state and log action
-                async with AsyncSessionLocal() as db:
-                    device = await get_device(db, device_id)
-                    if device:
-                        state = json.loads(device.state)
-                        state["relay_1"] = action
-                        await update_device_state(db, device_id, state)
-                        await create_action_log(db, device_id, "relay_1", action, "voice")
-                        logger.info(f"Device {device_id} relay_1 set to {action}")
-                        return {"success": True, "device_id": device_id, "action": action}
-
-                return {"error": "Device not found"}
+                return await _control_device(
+                    device_id=args.get('device_id', ''),
+                    action=args.get('action', ''),
+                )
 
             return {"error": f"Unknown tool: {tool_name}"}
 
@@ -179,14 +118,15 @@ async def audio_data(sid, data):
             session.add_message('assistant', response_text)
             await sio.emit('response', {'text': response_text}, to=sid)
 
-            # Stream TTS audio
             await sio.emit('status', {'state': 'speaking'}, to=sid)
 
-            async def emit_audio_chunk(chunk: bytes):
-                """Emit audio chunk as hex string."""
-                await sio.emit('audio_chunk', {'audio': chunk.hex()}, to=sid)
+            # Stream TTS clause-by-clause for lower latency
+            clauses = tts_service.split_into_clauses(response_text)
+            for clause in clauses:
+                await tts_service.synthesize_stream(clause, lambda chunk: sio.emit(
+                    'audio_chunk', {'audio': base64.b64encode(chunk).decode()}, to=sid
+                ))
 
-            await tts_service.synthesize_stream(response_text, emit_audio_chunk)
             await sio.emit('audio_done', {}, to=sid)
 
         # Return to listening state
@@ -196,3 +136,63 @@ async def audio_data(sid, data):
         logger.error(f"Error in audio_data handler: {e}", exc_info=True)
         await sio.emit('error', {'message': str(e)}, to=sid)
         await sio.emit('status', {'state': 'listening'}, to=sid)
+
+
+# --- Tool execution helpers ---
+
+async def _list_devices():
+    from app.db.database import AsyncSessionLocal
+    from app.devices.models import Device
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Device).limit(100))
+        devices = []
+        for d in result.scalars().all():
+            devices.append({
+                "device_id": d.device_id,
+                "name": d.name,
+                "room": d.room,
+                "state": json.loads(d.state) if d.state else {}
+            })
+    return {"devices": devices}
+
+
+async def _get_device_status(device_id: str):
+    from app.db.database import AsyncSessionLocal
+    from app.devices.crud import get_device
+
+    async with AsyncSessionLocal() as db:
+        device = await get_device(db, device_id)
+
+    if device:
+        return {
+            "device_id": device.device_id,
+            "name": device.name,
+            "state": json.loads(device.state)
+        }
+    return {"error": "Device not found"}
+
+
+async def _control_device(device_id: str, action: str):
+    from app.db.database import AsyncSessionLocal
+    from app.devices.crud import get_device, update_device_state, create_action_log
+
+    # Single DB session for entire TOGGLE operation
+    async with AsyncSessionLocal() as db:
+        device = await get_device(db, device_id)
+        if not device:
+            return {"error": "Device not found"}
+
+        state = json.loads(device.state)
+
+        if action == 'TOGGLE':
+            current = state.get("relay_1", "OFF")
+            action = "OFF" if current == "ON" else "ON"
+
+        state["relay_1"] = action
+        await update_device_state(db, device_id, state)
+        await create_action_log(db, device_id, "relay_1", action, "voice")
+
+        logger.info(f"Device {device_id} relay_1 set to {action}")
+        return {"success": True, "device_id": device_id, "action": action}

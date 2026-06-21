@@ -151,20 +151,16 @@
   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
   let audioQueue = [];
 
-  async function playAudioChunk(hexData) {
-    const bytes = new Uint8Array(hexData.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  async function playAudioChunk(b64Data) {
     try {
-      const audioBuffer = await audioContext.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+      const binary = atob(b64Data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
       const source = audioContext.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioContext.destination);
       source.start();
-      source.onended = () => {
-        if (audioQueue.length > 0) {
-          const next = audioQueue.shift();
-          next();
-        }
-      };
     } catch (_) { /* skip decode errors */ }
   }
 

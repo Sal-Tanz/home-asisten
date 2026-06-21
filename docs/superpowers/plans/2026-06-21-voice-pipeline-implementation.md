@@ -719,3 +719,459 @@ Expected: 3 tools listed (control_device, get_device_status, list_devices)
 git add backend/app/chat/tools.py
 git commit -m "feat: add AI tool definitions for device control"
 ```
+
+---
+
+## Task 7: Socket.IO Router (Main Integration)
+
+**Files:**
+- Create: `backend/app/chat/router.py`
+- Modify: `backend/app/main.py`
+
+- [ ] **Step 1: Create Socket.IO router**
+
+```python
+# backend/app/chat/router.py
+import asyncio
+import json
+import logging
+from typing import Dict
+import socketio
+
+from app.chat.models import ChatSession
+from app.chat.tools import TOOLS
+from app.core.stt_service import STTService
+from app.core.tts_service import TTSService
+from app.core.ai_agent import AIAgent
+
+logger = logging.getLogger(__name__)
+
+# Global services initialized once
+stt_service = STTService()
+tts_service = TTSService()
+ai_agent = AIAgent()
+
+# In-memory chat sessions
+sessions: Dict[str, ChatSession] = {}
+
+# Socket.IO server
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins='*',
+)
+socket_app = socketio.ASGIApp(sio)
+
+
+@sio.event
+async def connect(sid, environ):
+    logger.info(f"Client connected: {sid}")
+    sessions[sid] = ChatSession(session_id=sid)
+    await sio.emit('connected', {'session_id': sid}, to=sid)
+
+
+@sio.event
+async def disconnect(sid):
+    logger.info(f"Client disconnected: {sid}")
+    if sid in sessions:
+        del sessions[sid]
+
+
+@sio.event
+async def audio_data(sid, data):
+    """Receive audio chunk from client (WebM format)."""
+    session = sessions.get(sid)
+    if not session:
+        await sio.emit('error', {'message': 'No active session'}, to=sid)
+        return
+
+    try:
+        # Decode base64 audio data
+        import base64
+        audio_bytes = base64.b64decode(data['audio'])
+
+        # STEP 1: Transcribe audio via Google STT
+        await sio.emit('status', {'state': 'transcribing'}, to=sid)
+
+        result = await stt_service.transcribe(audio_bytes, audio_format='webm')
+
+        if result['error']:
+            await sio.emit('error', {'message': f'STT error: {result["error"]}'}, to=sid)
+            return
+
+        transcript = result['transcript']
+        confidence = result['confidence']
+
+        if not transcript:
+            await sio.emit('error', {'message': 'Tidak ada suara terdeteksi'}, to=sid)
+            return
+
+        # Send transcript to client
+        await sio.emit('transcript', {'text': transcript, 'confidence': confidence}, to=sid)
+
+        # Add user message to session
+        session.add_message('user', transcript)
+
+        # STEP 2: Process with AI Agent
+        await sio.emit('status', {'state': 'thinking'}, to=sid)
+
+        # Build messages for AI
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Kamu adalah ElBot, asisten rumah pintar berbahasa Indonesia. "
+                    "Kamu ramah, helpful, dan efisien.\n"
+                    "Aturan:\n"
+                    "1. Selalu jawab dalam Bahasa Indonesia\n"
+                    "2. Gunakan nama 'ElBot' saat memperkenalkan diri\n"
+                    "3. Untuk perintah kontrol perangkat, gunakan tools yang tersedia\n"
+                    "4. Jawaban harus singkat dan jelas (1-2 kalimat)\n"
+                    "5. Konfirmasi aksi yang dilakukan\n"
+                    "6. Jika tidak mengerti, minta klarifikasi dengan sopan"
+                ),
+            }
+        ] + session.get_messages_as_openai_format()
+
+        # Collect response text
+        response_text = ""
+
+        async def on_text_chunk(chunk: str):
+            nonlocal response_text
+            response_text += chunk
+            await sio.emit('text_chunk', {'text': chunk}, to=sid)
+
+        async def on_tool_call(tool_name: str, call_id: str, args: dict):
+            """Execute device tool immediately."""
+            from app.main import mqtt_service
+            from app.db.database import AsyncSessionLocal
+            from app.devices.crud import get_device, create_action_log, update_device_state
+            import json as json_lib
+
+            if tool_name == "list_devices":
+                async with AsyncSessionLocal() as db:
+                    devices = await get_devices_hack(db)
+                return {"devices": devices}
+
+            elif tool_name == "get_device_status":
+                async with AsyncSessionLocal() as db:
+                    device = await get_device(db, args['device_id'])
+                if device:
+                    state = json_lib.loads(device.state)
+                    return {
+                        "device_id": device.device_id,
+                        "name": device.name,
+                        "state": state,
+                    }
+                return {"error": "Device not found"}
+
+            elif tool_name == "control_device":
+                device_id = args['device_id']
+                action = args['action']
+
+                # Handle TOGGLE
+                if action == "TOGGLE":
+                    async with AsyncSessionLocal() as db:
+                        device = await get_device(db, device_id)
+                        if device:
+                            state = json_lib.loads(device.state)
+                            current = state.get("relay_1", "OFF")
+                            action = "OFF" if current == "ON" else "ON"
+
+                # Execute via MQTT
+                if mqtt_service and mqtt_service.is_connected():
+                    await mqtt_service.publish_command(
+                        device_id=device_id,
+                        relay="relay_1",
+                        action=action,
+                    )
+
+                # Update state and log
+                async with AsyncSessionLocal() as db:
+                    device = await get_device(db, device_id)
+                    if device:
+                        state = json_lib.loads(device.state)
+                        state["relay_1"] = action
+                        await update_device_state(db, device_id, state)
+                        await create_action_log(db, device_id, "relay_1", action, "voice")
+
+                return {"success": True, "device_id": device_id, "action": action}
+
+        # Stream AI response
+        await ai_agent.stream_with_tools(
+            messages=messages,
+            tools=TOOLS,
+            on_text_chunk=on_text_chunk,
+            on_tool_call=on_tool_call,
+        )
+
+        # Add assistant response to session
+        if response_text:
+            session.add_message('assistant', response_text)
+
+        # STEP 3: Synthesize TTS and stream audio
+        if response_text:
+            await sio.emit('status', {'state': 'speaking'}, to=sid)
+
+            # Send response text to client
+            await sio.emit('response', {'text': response_text}, to=sid)
+
+            # Stream TTS audio
+            await tts_service.synthesize_stream(
+                text=response_text,
+                on_audio_chunk=lambda chunk: sio.emit('audio_chunk', {
+                    'audio': chunk.hex(),
+                }, to=sid),
+            )
+
+            await sio.emit('audio_done', {}, to=sid)
+
+        # Resume listening
+        await sio.emit('status', {'state': 'listening'}, to=sid)
+
+    except Exception as e:
+        logger.error(f"Error processing audio: {e}")
+        await sio.emit('error', {'message': f'Error: {str(e)}'}, to=sid)
+        await sio.emit('status', {'state': 'listening'}, to=sid)
+
+
+async def get_devices_hack(db) -> list:
+    """Quick device list without schema overhead."""
+    from app.devices.models import Device
+    from sqlalchemy import select
+    import json as json_lib
+
+    result = await db.execute(select(Device).limit(100))
+    devices = []
+    for device in result.scalars().all():
+        state = json_lib.loads(device.state) if device.state else {}
+        devices.append({
+            "device_id": device.device_id,
+            "name": device.name,
+            "room": device.room,
+            "type": device.type,
+            "state": state,
+            "is_online": device.is_online,
+        })
+    return devices
+```
+
+- [ ] **Step 2: Verify router imports**
+
+```bash
+cd /root/project/home-asisten/backend && source venv/bin/activate && python -c "
+from app.chat.router import sio, socket_app, stt_service, tts_service, ai_agent
+print('Socket.IO router import OK')
+print('STT:', stt_service.__class__.__name__)
+print('TTS:', tts_service.__class__.__name__)
+print('AI:', ai_agent.__class__.__name__)
+"
+```
+
+Expected: "Socket.IO router import OK" with service names
+
+---
+
+## Task 8: Update main.py for Socket.IO
+
+**Files:**
+- Modify: `backend/app/main.py`
+
+- [ ] **Step 1: Add Socket.IO mount to main.py**
+
+Read main.py then add after `app = FastAPI(...)` block and before routers:
+
+```python
+# Add these imports at top of main.py:
+import socketio
+from app.chat.router import sio, socket_app  # Socket.IO router
+
+# After app.include_router lines, add:
+# Mount Socket.IO app
+socket_app.mount(app, socketio_path='/socket.io')
+```
+
+The Socket.IO server will be available at `ws://host/socket.io/`.
+
+- [ ] **Step 2: Verify app starts with Socket.IO**
+
+```bash
+cd /root/project/home-asisten/backend && source venv/bin/activate && timeout 3 uvicorn app.main:app --host 127.0.0.1 --port 8004 2>&1 &
+sleep 2
+curl -s http://127.0.0.1:8004/ | grep "ElBot Backend API"
+curl -s http://127.0.0.1:8004/health | grep "healthy"
+pkill -f "uvicorn app.main:app --host 127.0.0.1 --port 8004"
+echo "App with Socket.IO OK"
+```
+
+Expected: app starts, root and health endpoints respond
+
+- [ ] **Step 3: Commit Socket.IO integration**
+
+```bash
+git add backend/app/chat/router.py backend/app/main.py
+git commit -m "feat: add Socket.IO voice chat router with STT-AI-TTS pipeline"
+```
+
+---
+
+## Task 9: Config Updates
+
+**Files:**
+- Modify: `backend/app/config.py`
+- Modify: `backend/.env`
+
+- [ ] **Step 1: Add AI/STT/TTS settings to config.py**
+
+```python
+# In Settings class, add:
+    # AI Agent
+    ai_api_base_url: str = "https://api-ai.elektrounsub.com/v1"
+    ai_api_key: str = ""
+    ai_model_name: str = "mmf/mimo-auto"
+
+    # STT
+    google_stt_key: str = ""
+    google_stt_url: str = "https://www.google.com/speech-api/v2/recognize"
+```
+
+- [ ] **Step 2: Update .env with API keys**
+
+```env
+# AI Agent
+AI_API_BASE_URL=https://api-ai.elektrounsub.com/v1
+AI_API_KEY=sk-f86cd6ad61e2754f-tb3cn0-8412a37b
+AI_MODEL_NAME=mmf/mimo-auto
+
+# Google STT
+GOOGLE_STT_KEY=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw
+GOOGLE_STT_URL=https://www.google.com/speech-api/v2/recognize
+```
+
+- [ ] **Step 3: Commit config**
+
+```bash
+git add backend/app/config.py backend/.env
+git commit -m "chore: add AI and STT configuration to settings and env"
+```
+
+---
+
+## Task 10: Final Integration & Verification
+
+- [ ] **Step 1: Run all imports test**
+
+```bash
+cd /root/project/home-asisten/backend && source venv/bin/activate && python -c "
+from app.main import app
+from app.config import get_settings
+from app.core.stt_service import STTService
+from app.core.tts_service import TTSService
+from app.core.ai_agent import AIAgent
+from app.chat.models import ChatSession, ChatMessage
+from app.chat.tools import TOOLS
+from app.chat.router import sio, socket_app
+print('ALL IMPORTS OK')
+"
+```
+
+Expected: "ALL IMPORTS OK"
+
+- [ ] **Step 2: Test STT service (basic unit test)**
+
+```bash
+cd /root/project/home-asisten/backend && source venv/bin/activate && python -c "
+from app.core.stt_service import STTService
+import asyncio
+
+async def test():
+    stt = STTService()
+    # Verify service initializes correctly
+    assert stt.api_key == 'AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw'
+    assert stt.session is not None
+    print('STT service test OK')
+
+asyncio.run(test())
+"
+```
+
+Expected: "STT service test OK"
+
+- [ ] **Step 3: Test TTS service (unit test)**
+
+```bash
+cd /root/project/home-asisten/backend && source venv/bin/activate && python -c "
+from app.core.tts_service import TTSService
+import asyncio
+
+async def test():
+    tts = TTSService()
+    assert tts.voice == 'id-ID-GadisNeural'
+
+    # Test clause splitting
+    clauses = tts.split_into_clauses('Siap, lampu sudah dinyalakan. Ada lagi?')
+    assert len(clauses) == 2
+    print('TTS service test OK')
+
+asyncio.run(test())
+"
+```
+
+Expected: "TTS service test OK"
+
+- [ ] **Step 4: Test AI agent (unit test with mock)**
+
+```bash
+cd /root/project/home-asisten/backend && source venv/bin/activate && python -c "
+from app.core.ai_agent import AIAgent
+
+agent = AIAgent()
+assert agent.model == 'mmf/mimo-auto'
+assert agent.client.base_url == 'https://api-ai.elektrounsub.com/v1'
+print('AI agent test OK')
+"
+```
+
+Expected: "AI agent test OK"
+
+- [ ] **Step 5: Test app startup with full integration**
+
+```bash
+cd /root/project/home-asisten/backend && source venv/bin/activate && timeout 3 uvicorn app.main:app --host 127.0.0.1 --port 8005 2>&1 &
+sleep 2
+curl -s http://127.0.0.1:8005/
+curl -s http://127.0.0.1:8005/health
+# Socket.IO should be available at /socket.io/
+curl -s http://127.0.0.1:8005/socket.io/ | head -5
+pkill -f "uvicorn app.main:app --host 127.0.0.1 --port 8005"
+echo "Full integration test OK"
+```
+
+Expected: all endpoints respond, Socket.IO endpoint accessible
+
+- [ ] **Step 6: Final commit**
+
+```bash
+git add .
+git commit -m "feat: Voice Pipeline + AI Agent complete integration"
+```
+
+---
+
+## Success Criteria
+
+✅ All new dependencies installed (socketio, edge-tts, openai, aiofiles)  
+✅ STT service imports and initializes with persistent HTTP session  
+✅ TTS service imports with Edge TTS id-ID-GadisNeural voice  
+✅ AI agent imports with correct model and base URL  
+✅ Socket.IO router processes audio → transcript → AI → TTS pipeline  
+✅ App starts with Socket.IO mounted alongside FastAPI  
+✅ All imports resolve without errors  
+✅ Config contains all API keys and URLs  
+✅ Ready for Web UI integration
+
+---
+
+## Next Sub-Project
+
+After Voice Pipeline + AI Agent:
+- **Sub-Project 3: Web UI** — Chat interface, device management, firmware upload UI
