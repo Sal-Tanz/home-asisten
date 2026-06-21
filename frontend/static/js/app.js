@@ -4,10 +4,13 @@
 
   // State
   let socket = null;
-  let isRecording = false;
+  let isMuted = false;
   let isSpeaking = false;
+  let mediaStream = null;
   let mediaRecorder = null;
-  let audioChunks = [];
+  let audioCtx = null;
+  let analyser = null;
+  let volumeAnimationId = null;
 
   // DOM elements
   const micBtn = document.getElementById('micButton');
@@ -16,17 +19,25 @@
   const chatContainer = document.getElementById('chatContainer');
   const voiceIndicator = document.getElementById('voiceIndicator');
   const voiceStatus = document.getElementById('voiceStatus');
+  const waveformBars = document.getElementById('waveformBars');
+  const typingDots = document.getElementById('typingDots');
   const devicePanel = document.getElementById('devicePanel');
   const connectionStatus = document.getElementById('connectionStatus');
 
   // ─── Init ───────────────────────────────────────
-  function init() {
+  async function init() {
     lucide.createIcons();
     loadDevices();
     setupSocket();
     setupInput();
-    setupMic();
+    await startListening();  // Auto-start mic on page load
+    setupMuteToggle();
     autoResizeTextarea();
+    window.addEventListener('beforeunload', () => {
+      if (volumeAnimationId) cancelAnimationFrame(volumeAnimationId);
+      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+      if (audioCtx) audioCtx.close();
+    });
   }
 
   // ─── Socket.IO ──────────────────────────────────
@@ -86,64 +97,151 @@
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
-  // ─── Mic / Recording ────────────────────────────
-  async function setupMic() {
-    micBtn.addEventListener('click', async () => {
-      if (isRecording) stopRecording();
-      else startRecording();
-    });
-  }
+  
 
-  async function startRecording() {
+  // ─── Always-On Mic ──────────────────────────────
+  async function startListening() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
       });
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-      audioChunks = [];
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result.split(',')[1];
-          socket.emit('audio_data', { audio: base64 });
-        };
-        reader.readAsDataURL(blob);
-        stream.getTracks().forEach(t => t.stop());
+
+      // Set up Web Audio API analyser for real-time volume
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      const source = audioCtx.createMediaStreamSource(mediaStream);
+      source.connect(analyser);
+
+      // Start volume visualization loop
+      trackVolume();
+
+      // Create MediaRecorder with continuous chunks (250ms)
+      mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm;codecs=opus' });
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0 && !isMuted && !isSpeaking) {
+          // Convert blob → base64 and send via Socket.IO
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1];
+            if (socket && socket.connected) {
+              socket.emit('audio_data', { audio: base64 });
+            }
+          };
+          reader.readAsDataURL(e.data);
+        }
       };
-      mediaRecorder.start();
-      isRecording = true;
-      micBtn.querySelector('i').setAttribute('data-lucide', 'mic-off');
-      micBtn.classList.add('text-danger');
-      showVoiceIndicator('Mendengarkan...');
+      mediaRecorder.start(250);
+
+      showVoiceIndicator('listening');
+      console.log('Always-on mic started');
     } catch (err) {
       showToast('Tidak bisa mengakses mikrofon', 'error');
     }
   }
 
-  function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); isRecording = false; }
-    micBtn.querySelector('i').setAttribute('data-lucide', 'mic');
-    micBtn.classList.remove('text-danger');
+  function setupMuteToggle() {
+    micBtn.addEventListener('click', () => {
+      if (isMuted) unmuteMic();
+      else muteMic();
+    });
+  }
+
+  function muteMic() {
+    isMuted = true;
+    mediaStream.getTracks().forEach(t => t.enabled = false);
+    micBtn.querySelector('.mic-icon').setAttribute('data-lucide', 'mic-off');
+    micBtn.querySelector('.mic-icon').classList.add('text-danger');
+    micBtn.setAttribute('aria-label', 'Unmute mikrofon');
     hideVoiceIndicator();
     lucide.createIcons();
   }
 
-  // ─── Voice Indicator ────────────────────────────
-  function showVoiceIndicator(statusText) {
-    voiceIndicator.classList.remove('hidden');
-    voiceStatus.textContent = statusText;
+  function unmuteMic() {
+    isMuted = false;
+    mediaStream.getTracks().forEach(t => t.enabled = true);
+    micBtn.querySelector('.mic-icon').setAttribute('data-lucide', 'mic');
+    micBtn.querySelector('.mic-icon').classList.remove('text-danger');
+    micBtn.setAttribute('aria-label', 'Mute mikrofon');
+    showVoiceIndicator('listening');
+    lucide.createIcons();
   }
+
+  function trackVolume() {
+    if (!analyser) return;
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    function updateBars() {
+      analyser.getByteFrequencyData(dataArray);
+
+      // Calculate average volume across frequency bins
+      const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+      const normalized = Math.min(avg / 128, 1);
+
+      // Update waveform bar heights (5 bars)
+      if (waveformBars) {
+        const bars = waveformBars.querySelectorAll('.waveform-bar');
+        bars.forEach((bar, i) => {
+          // Vary each bar slightly based on its position in frequency spectrum
+          const freqSlice = dataArray.slice(i * 20, (i + 1) * 20);
+          const sliceAvg = freqSlice.reduce((a, b) => a + b, 0) / freqSlice.length;
+          const height = Math.max(4, (sliceAvg / 255) * 32);
+          bar.style.height = height + 'px';
+        });
+      }
+
+      volumeAnimationId = requestAnimationFrame(updateBars);
+    }
+
+    volumeAnimationId = requestAnimationFrame(updateBars);
+  }
+
+  // ─── Voice Indicator (4 States) ─────────────────
+  function showVoiceIndicator(state) {
+    voiceIndicator.classList.remove('hidden',
+      'voice-listening', 'voice-user-speaking', 'voice-thinking', 'voice-speaking');
+
+    switch (state) {
+      case 'listening':
+        voiceIndicator.classList.add('voice-listening');
+        voiceStatus.textContent = 'Mendengarkan...';
+        if (waveformBars) waveformBars.classList.remove('hidden');
+        if (typingDots) typingDots.classList.add('hidden');
+        break;
+      case 'user_speaking':
+        voiceIndicator.classList.add('voice-user-speaking');
+        voiceStatus.textContent = 'Anda berbicara...';
+        if (waveformBars) waveformBars.classList.remove('hidden');
+        if (typingDots) typingDots.classList.add('hidden');
+        break;
+      case 'thinking':
+        voiceIndicator.classList.add('voice-thinking');
+        voiceStatus.textContent = 'Berpikir...';
+        if (waveformBars) waveformBars.classList.add('hidden');
+        if (typingDots) typingDots.classList.remove('hidden');
+        break;
+      case 'speaking':
+        voiceIndicator.classList.add('voice-speaking');
+        voiceStatus.textContent = 'ElBot berbicara...';
+        if (waveformBars) waveformBars.classList.remove('hidden');
+        if (typingDots) typingDots.classList.add('hidden');
+        break;
+    }
+  }
+
   function hideVoiceIndicator() {
     voiceIndicator.classList.add('hidden');
+    voiceIndicator.classList.remove(
+      'voice-listening', 'voice-user-speaking', 'voice-thinking', 'voice-speaking');
   }
+
   function handleStatus(state) {
     switch (state) {
-      case 'transcribing': showVoiceIndicator('Mengenali ucapan...'); break;
-      case 'thinking': showVoiceIndicator('Berpikir...'); break;
-      case 'speaking': isSpeaking = true; showVoiceIndicator('ElBot berbicara...'); break;
-      case 'listening': isSpeaking = false; hideVoiceIndicator(); break;
+      case 'transcribing': showVoiceIndicator('user_speaking'); break;
+      case 'thinking': showVoiceIndicator('thinking'); break;
+      case 'speaking': isSpeaking = true; showVoiceIndicator('speaking'); break;
+      case 'listening': isSpeaking = false; showVoiceIndicator('listening'); break;
     }
   }
 
@@ -178,10 +276,9 @@
   }
   function sendMessage() {
     const text = msgInput.value.trim();
-    if (!text) return;
+    if (!text || !socket?.connected) return;
     addMessage('user', text);
-    // For text-only mode, send via Socket.IO or REST
-    // Currently handled via Socket.IO emit (placeholder)
+    socket.emit('text_message', { text });
     msgInput.value = '';
     msgInput.style.height = 'auto';
   }
@@ -202,12 +299,17 @@
     if (!devices.length) return;
     devicePanel.innerHTML = devices.slice(0, 6).map(d => {
       const on = Object.values(d.state || {}).some(v => v === 'ON');
+      const statusIcon = on ? 'check-circle' : 'x-circle';
+      const statusColor = on ? 'text-secondary' : 'text-danger';
       return `<div class="flex-shrink-0 w-32 h-24 bg-slate-800 border ${on ? 'border-secondary' : 'border-slate-700'} rounded-xl p-3 flex flex-col justify-between hover:border-slate-600 transition-colors cursor-pointer" onclick="toggleDevice('${d.device_id}', '${on}')">
         <div class="flex items-center justify-between">
           <i data-lucide="${getDeviceIcon(d.type)}" class="w-5 h-5 ${on ? 'text-secondary' : 'text-slate-400'}"></i>
-          <span class="w-2 h-2 ${on ? 'bg-secondary' : 'bg-danger'} rounded-full"></span>
+          <i data-lucide="${statusIcon}" class="w-4 h-4 ${statusColor}"></i>
         </div>
-        <div><p class="text-xs font-medium truncate">${d.name}</p><p class="text-xs ${on ? 'text-secondary' : 'text-slate-400'}">${on ? 'ON' : 'OFF'}</p></div>
+        <div>
+          <p class="text-xs font-medium truncate">${d.name}</p>
+          <p class="text-xs font-semibold ${statusColor}">${on ? 'ON' : 'OFF'}</p>
+        </div>
       </div>`;
     }).join('');
     lucide.createIcons();
