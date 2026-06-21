@@ -235,10 +235,24 @@ mosquitto -v
 cd backend
 source venv/bin/activate
 
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Jalankan server
+uvicorn app.main:app --host 0.0.0.0 --port 8500 --reload
 ```
 
-> 🌐 Server berjalan di **http://localhost:8000**
+Server berjalan di **http://localhost:8500**
+>>>>>>> c35c9b3 (chore: update port references from 8000 to 8500)
+# Jalankan server
+uvicorn app.main:app --host 0.0.0.0 --port 8500 --reload
+```
+
+Server berjalan di **http://localhost:8500**
+=======
+# Jalankan server
+uvicorn app.main:app --host 0.0.0.0 --port 8500 --reload
+```
+
+Server berjalan di **http://localhost:8500**
+>>>>>>> c35c9b3 (chore: update port references from 8000 to 8500)
 
 ### 5️⃣ Flash ESP32 *(opsional)*
 

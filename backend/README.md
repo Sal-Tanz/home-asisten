@@ -48,7 +48,7 @@ Copy the output hash and paste it into `.env` as `APP_PASSWORD_HASH`.
 
 **Option 1: Using uvicorn directly**
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8500
 ```
 
 **Option 2: Using the convenience script**
@@ -56,13 +56,13 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ./run.sh
 ```
 
-The server will start at http://localhost:8000
+The server will start at http://localhost:8500
 
 ## API Documentation
 
 Once running, visit:
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+- **Swagger UI:** http://localhost:8500/docs
+- **ReDoc:** http://localhost:8500/redoc
 
 ## API Endpoints
 

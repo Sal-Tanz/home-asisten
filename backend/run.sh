@@ -30,5 +30,5 @@ fi
 
 # Run the application
 echo "Starting ElBot Backend..."
-echo "API Documentation: http://localhost:8000/docs"
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+echo "API Documentation: http://localhost:8500/docs"
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8500
