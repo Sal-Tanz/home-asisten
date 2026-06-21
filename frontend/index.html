@@ -76,7 +76,7 @@
                 </div>
 
                 <!-- Settings Link -->
-                <a href="/settings.html" class="p-2 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" aria-label="Pengaturan">
+                <a href="/settings" class="p-2 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" aria-label="Pengaturan">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                 </a>
             </div>
@@ -164,15 +164,22 @@
             </div>
         </section>
 
-        <!-- Voice Indicator -->
+        <!-- Voice Indicator (4 States) -->
         <div id="voiceIndicator" class="hidden mb-6">
-            <div class="flex items-center justify-center gap-3 py-4 bg-slate-800/50 border border-slate-700 rounded-xl">
-                <div class="flex items-center gap-1">
-                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0s"></div>
-                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.2s"></div>
-                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.4s"></div>
-                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.6s"></div>
-                    <div class="w-1 h-8 bg-primary rounded-full animate-waveform" style="animation-delay: 0.8s"></div>
+            <div class="voice-indicator flex items-center justify-center gap-3 py-4 bg-slate-800/50 border border-slate-700 rounded-xl">
+                <!-- Waveform bars (for listening & user_speaking states) -->
+                <div id="waveformBars" class="flex items-center gap-1">
+                    <div class="waveform-bar" data-bar="0"></div>
+                    <div class="waveform-bar" data-bar="1"></div>
+                    <div class="waveform-bar" data-bar="2"></div>
+                    <div class="waveform-bar" data-bar="3"></div>
+                    <div class="waveform-bar" data-bar="4"></div>
+                </div>
+                <!-- Typing dots (for thinking state) -->
+                <div id="typingDots" class="hidden flex items-center gap-1">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
                 </div>
                 <p class="text-sm text-slate-300" id="voiceStatus">Mendengarkan...</p>
             </div>
@@ -200,7 +207,7 @@
                     class="flex-shrink-0 w-12 h-12 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center justify-center transition-all cursor-pointer group"
                     aria-label="Mulai bicara"
                 >
-                    <i data-lucide="mic" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                    <i data-lucide="mic" class="w-5 h-5 mic-icon group-hover:scale-110 transition-transform"></i>
                 </button>
 
                 <!-- Send Button -->
