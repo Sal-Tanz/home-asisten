@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     mqtt_password: str = ""
     mqtt_keepalive: int = 60
 
+    # AI API
+    ai_api_base_url: str = "https://api.openai.com/v1"
+    ai_api_key: str = ""
+    ai_model_name: str = "gpt-4"
+
     class Config:
         env_file = ".env"
 
