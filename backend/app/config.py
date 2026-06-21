@@ -18,8 +18,13 @@ class Settings(BaseSettings):
     ai_api_key: str = ""
     ai_model_name: str = "gpt-4"
 
+    # STT
+    google_stt_key: str = ""
+    google_stt_url: str = "https://www.google.com/speech-api/v2/recognize"
+
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 @lru_cache()
