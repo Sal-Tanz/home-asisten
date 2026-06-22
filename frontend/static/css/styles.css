@@ -163,3 +163,57 @@
 .mic-muted .mic-icon {
   color: #EF4444;
 }
+
+/* Fade-in animation (login card) */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+
+/* Skeleton loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1E293B 25%, #334155 50%, #1E293B 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Mobile responsive utilities */
+@media (max-width: 640px) {
+  .mobile-stack > * + * {
+    margin-top: 1rem;
+  }
+}
+
+/* Ensure minimum touch target size */
+button, [role="button"], .touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Smooth transitions for interactive elements */
+button, [role="button"], a {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Focus visible improvements */
+:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+/* Hide focus ring for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}

@@ -1,10 +1,10 @@
 /*
- * ElBot Home Asisten - ESP32 Relay Controller
+ * ElBot Home Asisten - ESP32 Relay Controller (Wokwi Version)
  *
- * Full firmware in single file - controls 4 relays via MQTT with OTA support
+ * Simulasi firmware untuk Wokwi - controls 4 relays via MQTT with OTA support
  *
- * Hardware:
- * - ESP32 DevKit (any variant)
+ * Hardware (Simulated):
+ * - ESP32 DevKit
  * - 4-channel relay module (active LOW)
  *
  * MQTT Topics:
@@ -18,6 +18,11 @@
  *
  * Status format (JSON):
  * { "relay_1": "ON", "relay_2": "OFF", "relay_3": "OFF", "relay_4": "OFF", "rssi": -55, "uptime": 12345 }
+ *
+ * WOKWI NOTES:
+ * - Configure WiFi SSID/Password via Wokwi UI
+ * - MQTT broker must be publicly accessible (test.mosquitto.org or your cloud broker)
+ * - OTA may not fully work in simulation but code structure is preserved
  */
 
 #include <WiFi.h>
@@ -27,17 +32,17 @@
 #include <Update.h>
 
 // ═══════════════════════════════════════════════════
-// CONFIGURATION - Update these for your setup
+// CONFIGURATION - Update these for Wokwi simulation
 // ═══════════════════════════════════════════════════
-const char* WIFI_SSID = "Wifi-Elektro-Pengajar";
-const char* WIFI_PASSWORD = "yangtautauaja";
-const char* MQTT_BROKER = "panel.elektrounsub.com";
+const char* WIFI_SSID = "Wokwi-GUEST";           // Default Wokwi WiFi
+const char* WIFI_PASSWORD = "";                   // No password for Wokwi-GUEST
+const char* MQTT_BROKER = "panel.elektrounsub.com";  // MQTT broker for ElBot
 const int MQTT_PORT = 1883;
-const char* MQTT_USERNAME = "";             // Leave empty if no auth
-const char* MQTT_PASSWORD = "";             // Leave empty if no auth
-const char* DEVICE_ID = "esp32_relay_01";   // Unique device ID
+const char* MQTT_USERNAME = "";                   // Leave empty if no auth
+const char* MQTT_PASSWORD = "";                   // Leave empty if no auth
+const char* DEVICE_ID = "wokwi_relay_01";         // Unique device ID for Wokwi
 
-// Relay GPIO pins (active LOW)
+// Relay GPIO pins (active LOW) - adjusted for Wokwi
 const int RELAY_PINS[4] = {26, 25, 33, 32};  // relay_1 to relay_4
 const int RELAY_COUNT = 4;
 
@@ -343,7 +348,7 @@ void reconnectMQTT() {
 
   Serial.print("MQTT connecting... ");
 
-  String clientId = "ESP32_" + String(DEVICE_ID) + "_" + String(random(0xffff), HEX);
+  String clientId = "Wokwi_ESP32_" + String(DEVICE_ID) + "_" + String(random(0xffff), HEX);
 
   // LWT (Last Will Testament) — broker will publish "offline" if we disconnect
   String lwtTopic = "elbot/" + String(DEVICE_ID) + "/lwt";
@@ -387,6 +392,7 @@ void setup() {
   Serial.println("╔══════════════════════════════════════╗");
   Serial.println("║   ElBot Home Asisten - ESP32 Relay   ║");
   Serial.println("║   WiFi + MQTT + 4 Relay + OTA        ║");
+  Serial.println("║   Wokwi Simulation Mode              ║");
   Serial.println("╚══════════════════════════════════════╝");
   Serial.println();
 
@@ -425,7 +431,7 @@ void setup() {
   reconnectMQTT();
 
   bootTime = millis();
-  Serial.println("\nReady.\n");
+  Serial.println("\nReady (Wokwi Mode).\n");
 }
 
 // ═══════════════════════════════════════════════════

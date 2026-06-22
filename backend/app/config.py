@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     secret_key: str
     debug: bool = False
     database_url: str = "sqlite+aiosqlite:///./elbot.db"
-    mqtt_broker_host: str = "localhost"
+    mqtt_broker_host: str = "test.mosquitto.org"
     mqtt_broker_port: int = 1883
     mqtt_username: str = ""
     mqtt_password: str = ""

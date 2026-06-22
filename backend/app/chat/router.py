@@ -22,6 +22,7 @@ ai_agent = AIAgent()
 
 # Session storage
 sessions: Dict[str, ChatSession] = {}
+session_locks: Dict[str, asyncio.Lock] = {}  # Per-session processing locks
 
 # Socket.IO server
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
@@ -40,6 +41,7 @@ async def connect(sid, environ):
 async def disconnect(sid):
     """Handle client disconnection."""
     sessions.pop(sid, None)
+    session_locks.pop(sid, None)  # Cleanup lock
     logger.info(f"Client disconnected: {sid}")
 
 
@@ -51,91 +53,101 @@ async def audio_data(sid, data):
         logger.warning(f"No session found for {sid}")
         return
 
-    try:
-        # Decode base64 audio
-        audio_bytes = base64.b64decode(data['audio'])
+    # Session lock to prevent concurrent processing
+    if sid not in session_locks:
+        session_locks[sid] = asyncio.Lock()
 
-        # Step 1: Speech-to-Text
-        await sio.emit('status', {'state': 'transcribing'}, to=sid)
-        result = await stt_service.transcribe(audio_bytes, audio_format='webm')
+    lock = session_locks[sid]
 
-        if result['error'] or not result['transcript']:
-            error_msg = result.get('error', 'Tidak ada suara terdeteksi')
-            await sio.emit('error', {'message': error_msg}, to=sid)
+    if lock.locked():
+        await sio.emit('error', {'message': 'Please wait for previous message to complete'}, to=sid)
+        return
+
+    async with lock:
+        try:
+            # Decode base64 audio
+            audio_bytes = base64.b64decode(data['audio'])
+
+            # Step 1: Speech-to-Text
+            await sio.emit('status', {'state': 'transcribing'}, to=sid)
+            result = await stt_service.transcribe(audio_bytes, audio_format='webm')
+
+            if result['error'] or not result['transcript']:
+                error_msg = result.get('error', 'Tidak ada suara terdeteksi')
+                await sio.emit('error', {'message': error_msg}, to=sid)
+                await sio.emit('status', {'state': 'listening'}, to=sid)
+                return
+
+            transcript = result['transcript']
+            logger.info(f"Transcribed: {transcript}")
+            await sio.emit('transcript', {'text': transcript}, to=sid)
+            session.add_message('user', transcript)
+
+            # Step 2: AI Agent processing with tools
+            await sio.emit('status', {'state': 'thinking'}, to=sid)
+
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + session.get_messages_as_openai_format()
+
+            response_text = ""
+
+            async def on_text_chunk(chunk: str):
+                """Handle streaming text chunks from AI."""
+                nonlocal response_text
+                response_text += chunk
+                await sio.emit('text_chunk', {'text': chunk}, to=sid)
+
+            async def on_tool_call(tool_call: dict):
+                """Handle tool execution requests from AI."""
+                tool_name = tool_call['name']
+
+                args = tool_call['args']
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except json.JSONDecodeError:
+                        args = {}
+
+                logger.info(f"Tool call: {tool_name} with args: {args}")
+
+                if tool_name == 'list_devices':
+                    return await _list_devices()
+
+                elif tool_name == 'get_device_status':
+                    return await _get_device_status(args.get('device_id', ''))
+
+                elif tool_name == 'control_device':
+                    return await _control_device(
+                        device_id=args.get('device_id', ''),
+                        action=args.get('action', ''),
+                    )
+
+                return {"error": f"Unknown tool: {tool_name}"}
+
+            # Stream AI response with tool support
+            await ai_agent.stream_with_tools(messages, TOOLS, on_text_chunk, on_tool_call)
+
+            # Step 3: Text-to-Speech (if we have response text)
+            if response_text:
+                session.add_message('assistant', response_text)
+
+                await sio.emit('status', {'state': 'speaking'}, to=sid)
+
+                # Stream TTS clause-by-clause for lower latency
+                clauses = tts_service.split_into_clauses(response_text)
+                for clause in clauses:
+                    await tts_service.synthesize_stream(clause, lambda chunk: sio.emit(
+                        'audio_chunk', {'audio': base64.b64encode(chunk).decode()}, to=sid
+                    ))
+
+                await sio.emit('audio_done', {}, to=sid)
+
+            # Return to listening state
             await sio.emit('status', {'state': 'listening'}, to=sid)
-            return
 
-        transcript = result['transcript']
-        logger.info(f"Transcribed: {transcript}")
-        await sio.emit('transcript', {'text': transcript}, to=sid)
-        session.add_message('user', transcript)
-
-        # Step 2: AI Agent processing with tools
-        await sio.emit('status', {'state': 'thinking'}, to=sid)
-
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + session.get_messages_as_openai_format()
-
-        response_text = ""
-
-        async def on_text_chunk(chunk: str):
-            """Handle streaming text chunks from AI."""
-            nonlocal response_text
-            response_text += chunk
-            await sio.emit('text_chunk', {'text': chunk}, to=sid)
-
-        async def on_tool_call(tool_call: dict):
-            """Handle tool execution requests from AI."""
-            tool_name = tool_call['name']
-
-            args = tool_call['args']
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except json.JSONDecodeError:
-                    args = {}
-
-            logger.info(f"Tool call: {tool_name} with args: {args}")
-
-            if tool_name == 'list_devices':
-                return await _list_devices()
-
-            elif tool_name == 'get_device_status':
-                return await _get_device_status(args.get('device_id', ''))
-
-            elif tool_name == 'control_device':
-                return await _control_device(
-                    device_id=args.get('device_id', ''),
-                    action=args.get('action', ''),
-                )
-
-            return {"error": f"Unknown tool: {tool_name}"}
-
-        # Stream AI response with tool support
-        await ai_agent.stream_with_tools(messages, TOOLS, on_text_chunk, on_tool_call)
-
-        # Step 3: Text-to-Speech (if we have response text)
-        if response_text:
-            session.add_message('assistant', response_text)
-            await sio.emit('response', {'text': response_text}, to=sid)
-
-            await sio.emit('status', {'state': 'speaking'}, to=sid)
-
-            # Stream TTS clause-by-clause for lower latency
-            clauses = tts_service.split_into_clauses(response_text)
-            for clause in clauses:
-                await tts_service.synthesize_stream(clause, lambda chunk: sio.emit(
-                    'audio_chunk', {'audio': base64.b64encode(chunk).decode()}, to=sid
-                ))
-
-            await sio.emit('audio_done', {}, to=sid)
-
-        # Return to listening state
-        await sio.emit('status', {'state': 'listening'}, to=sid)
-
-    except Exception as e:
-        logger.error(f"Error in audio_data handler: {e}", exc_info=True)
-        await sio.emit('error', {'message': str(e)}, to=sid)
-        await sio.emit('status', {'state': 'listening'}, to=sid)
+        except Exception as e:
+            logger.error(f"Error in audio_data handler: {e}", exc_info=True)
+            await sio.emit('error', {'message': str(e)}, to=sid)
+            await sio.emit('status', {'state': 'listening'}, to=sid)
 
 
 @sio.event
@@ -146,70 +158,81 @@ async def text_message(sid, data):
         logger.warning(f"No session found for {sid}")
         return
 
-    try:
-        transcript = data.get('text', '').strip()
-        if not transcript:
-            await sio.emit('error', {'message': 'Pesan kosong'}, to=sid)
-            return
+    # Get or create lock for this session
+    if sid not in session_locks:
+        session_locks[sid] = asyncio.Lock()
 
-        logger.info(f"Text message: {transcript}")
-        await sio.emit('transcript', {'text': transcript}, to=sid)
-        session.add_message('user', transcript)
+    lock = session_locks[sid]
 
-        # AI Agent processing with tools
-        await sio.emit('status', {'state': 'thinking'}, to=sid)
+    # Try to acquire lock (non-blocking)
+    if lock.locked():
+        await sio.emit('error', {'message': 'Please wait for previous message to complete'}, to=sid)
+        return
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + session.get_messages_as_openai_format()
+    async with lock:
+        try:
+            transcript = data.get('text', '').strip()
+            if not transcript:
+                await sio.emit('error', {'message': 'Pesan kosong'}, to=sid)
+                return
 
-        response_text = ""
+            logger.info(f"Text message: {transcript}")
+            await sio.emit('transcript', {'text': transcript}, to=sid)
+            session.add_message('user', transcript)
 
-        async def on_text_chunk(chunk: str):
-            nonlocal response_text
-            response_text += chunk
-            await sio.emit('text_chunk', {'text': chunk}, to=sid)
+            # AI Agent processing with tools
+            await sio.emit('status', {'state': 'thinking'}, to=sid)
 
-        async def on_tool_call(tool_call: dict):
-            tool_name = tool_call['name']
-            args = tool_call['args']
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except json.JSONDecodeError:
-                    args = {}
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + session.get_messages_as_openai_format()
 
-            logger.info(f"Tool call: {tool_name} with args: {args}")
+            response_text = ""
 
-            if tool_name == 'list_devices':
-                return await _list_devices()
-            elif tool_name == 'get_device_status':
-                return await _get_device_status(args.get('device_id', ''))
-            elif tool_name == 'control_device':
-                return await _control_device(
-                    device_id=args.get('device_id', ''),
-                    action=args.get('action', ''),
-                )
-            return {"error": f"Unknown tool: {tool_name}"}
+            async def on_text_chunk(chunk: str):
+                nonlocal response_text
+                response_text += chunk
+                await sio.emit('text_chunk', {'text': chunk}, to=sid)
 
-        await ai_agent.stream_with_tools(messages, TOOLS, on_text_chunk, on_tool_call)
+            async def on_tool_call(tool_call: dict):
+                tool_name = tool_call['name']
+                args = tool_call['args']
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except json.JSONDecodeError:
+                        args = {}
 
-        if response_text:
-            session.add_message('assistant', response_text)
-            await sio.emit('response', {'text': response_text}, to=sid)
-            await sio.emit('status', {'state': 'speaking'}, to=sid)
+                logger.info(f"Tool call: {tool_name} with args: {args}")
 
-            clauses = tts_service.split_into_clauses(response_text)
-            for clause in clauses:
-                await tts_service.synthesize_stream(clause, lambda chunk: sio.emit(
-                    'audio_chunk', {'audio': base64.b64encode(chunk).decode()}, to=sid
-                ))
-            await sio.emit('audio_done', {}, to=sid)
+                if tool_name == 'list_devices':
+                    return await _list_devices()
+                elif tool_name == 'get_device_status':
+                    return await _get_device_status(args.get('device_id', ''))
+                elif tool_name == 'control_device':
+                    return await _control_device(
+                        device_id=args.get('device_id', ''),
+                        action=args.get('action', ''),
+                    )
+                return {"error": f"Unknown tool: {tool_name}"}
 
-        await sio.emit('status', {'state': 'listening'}, to=sid)
+            await ai_agent.stream_with_tools(messages, TOOLS, on_text_chunk, on_tool_call)
 
-    except Exception as e:
-        logger.error(f"Error in text_message handler: {e}", exc_info=True)
-        await sio.emit('error', {'message': str(e)}, to=sid)
-        await sio.emit('status', {'state': 'listening'}, to=sid)
+            if response_text:
+                session.add_message('assistant', response_text)
+                await sio.emit('status', {'state': 'speaking'}, to=sid)
+
+                clauses = tts_service.split_into_clauses(response_text)
+                for clause in clauses:
+                    await tts_service.synthesize_stream(clause, lambda chunk: sio.emit(
+                        'audio_chunk', {'audio': base64.b64encode(chunk).decode()}, to=sid
+                    ))
+                await sio.emit('audio_done', {}, to=sid)
+
+            await sio.emit('status', {'state': 'listening'}, to=sid)
+
+        except Exception as e:
+            logger.error(f"Error in text_message handler: {e}", exc_info=True)
+            await sio.emit('error', {'message': str(e)}, to=sid)
+            await sio.emit('status', {'state': 'listening'}, to=sid)
 
 
 # --- Tool execution helpers ---

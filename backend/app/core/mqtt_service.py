@@ -119,7 +119,7 @@ class MQTTService:
         topic = f"elbot/{device_id}/cmd"
         payload = {
             "relay": relay,
-            "state": action.lower(),
+            "state": action.upper(),
         }
 
         loop = asyncio.get_event_loop()

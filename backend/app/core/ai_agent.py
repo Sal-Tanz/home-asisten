@@ -15,7 +15,10 @@ class AIAgent:
         settings = get_settings()
         self.client = AsyncOpenAI(
             base_url=settings.ai_api_base_url,
-            api_key=settings.ai_api_key
+            api_key=settings.ai_api_key,
+            default_headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
         )
         self.model = settings.ai_model_name
 

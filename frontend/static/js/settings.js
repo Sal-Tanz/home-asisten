@@ -41,10 +41,19 @@
 
   function renderDeviceTable() {
     const tbody = document.getElementById('deviceTableBody');
+    const cardsMobile = document.getElementById('deviceCardsMobile');
     const emptyEl = document.getElementById('noDevices');
-    if (!devices.length) { tbody.innerHTML = ''; emptyEl.classList.remove('hidden'); return; }
+
+    if (!devices.length) {
+      tbody.innerHTML = '';
+      cardsMobile.innerHTML = '';
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+
     emptyEl.classList.add('hidden');
 
+    // Desktop table view
     tbody.innerHTML = devices.map(d => {
       const on = Object.values(d.state || {}).some(v => v === 'ON');
       return `<tr class="hover:bg-slate-700/50 transition-colors">
@@ -64,6 +73,35 @@
         </td>
       </tr>`;
     }).join('');
+
+    // Mobile card view
+    cardsMobile.innerHTML = devices.map(d => {
+      const on = Object.values(d.state || {}).some(v => v === 'ON');
+      return `<div class="bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-slate-600 transition-colors">
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-slate-200 truncate">${d.name}</p>
+            <p class="text-xs text-slate-400 font-mono truncate">${d.device_id}</p>
+          </div>
+          <span class="flex-shrink-0 ml-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${on ? 'bg-secondary/20 text-secondary' : 'bg-slate-700 text-slate-400'}">
+            <span class="w-1.5 h-1.5 rounded-full ${on ? 'bg-secondary' : 'bg-slate-500'}"></span>${on ? 'ON' : 'OFF'}
+          </span>
+        </div>
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-3">
+          <span><i data-lucide="map-pin" class="w-3 h-3 inline mr-1"></i>${d.room}</span>
+          <span class="capitalize"><i data-lucide="cpu" class="w-3 h-3 inline mr-1"></i>${d.type}</span>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="window.editDevice('${d.device_id}')" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1.5">
+            <i data-lucide="edit" class="w-3.5 h-3.5"></i>Edit
+          </button>
+          <button onclick="window.deleteDevice('${d.device_id}')" class="flex-1 py-2 bg-danger/10 hover:bg-danger/20 rounded-lg transition-colors cursor-pointer text-danger text-xs flex items-center justify-center gap-1.5">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Hapus
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+
     lucide.createIcons();
   }
 

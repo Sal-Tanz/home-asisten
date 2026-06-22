@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
 import asyncio
@@ -167,11 +167,15 @@ async def login_page():
 
 @app.get("/settings")
 async def settings_page(request: Request):
+    if not request.session.get("authenticated"):
+        return RedirectResponse(url="/login", status_code=307)
     return FileResponse(FRONTEND_DIR / "settings.html")
 
 
 @app.get("/")
 async def index_page(request: Request):
+    if not request.session.get("authenticated"):
+        return RedirectResponse(url="/login", status_code=307)
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
