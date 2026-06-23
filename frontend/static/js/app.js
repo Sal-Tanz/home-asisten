@@ -112,9 +112,8 @@
          <div class="flex-1"><div class="bg-primary rounded-2xl rounded-tr-none px-3 py-2 sm:px-4 sm:py-3 shadow-[0_4px_12px_-2px_rgba(8,145,178,0.35)]"><p class="text-sm leading-relaxed text-white">${escapeHtml(text)}</p></div></div>`
       : `<div class="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-[0_4px_10px_-2px_rgba(8,145,178,0.4)]"><i data-lucide="bot" class="w-5 h-5 text-white"></i></div>
          <div class="flex-1"><div class="bg-surface rounded-2xl rounded-tl-none px-3 py-2 sm:px-4 sm:py-3 border border-border-light shadow-sm"><p class="text-sm leading-relaxed text-text-main bot-text">${escapeHtml(text)}</p></div></div>`;
-    // Insert before voice indicator so the indicator stays anchored to the
-    // bottom of the chat (right where the AI's next bubble will appear).
-    chatContainer.insertBefore(div, voiceIndicator);
+    // Append bubble to the end of the chat container.
+    chatContainer.append(div);
     scrollChatToBottom();
     lucide.createIcons();
   }
