@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,13 +8,12 @@
     <!-- Fonts: Inter + JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -22,14 +21,23 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        primary: '#3B82F6',
-                        'primary-glow': '#60A5FA',
+                        primary: '#0891B2',
+                        'primary-dark': '#0E7490',
+                        'primary-light': '#22D3EE',
                         secondary: '#10B981',
                         accent: '#F59E0B',
                         danger: '#EF4444',
-                        surface: '#0A0F1E',
-                        'surface-muted': '#111827',
-                        'surface-raised': '#1E293B',
+                        success: '#10B981',
+                        surface: '#FFFFFF',
+                        'bg-main': '#F0F9FF',
+                        'bg-accent': '#ECFEFF',
+                        'text-main': '#164E63',
+                        'text-muted': '#64748B',
+                        'border-light': '#E2E8F0',
+                    },
+                    boxShadow: {
+                        soft: '0 1px 3px 0 rgba(15,23,42,0.08), 0 1px 2px -1px rgba(15,23,42,0.06)',
+                        float: '0 4px 12px -2px rgba(15,23,42,0.08), 0 2px 6px -2px rgba(15,23,42,0.05)',
                     },
                 },
             },
@@ -48,86 +56,88 @@
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
-<body class="bg-surface text-slate-100 font-sans antialiased min-h-screen">
+<body class="bg-bg-main text-text-main font-sans antialiased min-h-screen">
 
     <!-- Header -->
-    <header class="fixed top-0 inset-x-0 h-14 bg-surface/95 backdrop-blur-sm border-b border-slate-800 z-50">
-        <div class="max-w-6xl mx-auto px-4 h-full flex items-center justify-between">
+    <header class="fixed top-0 inset-x-0 h-14 bg-surface/90 backdrop-blur-md border-b border-border-light shadow-soft z-50">
+        <div class="max-w-3xl mx-auto px-4 h-full flex items-center justify-between">
             <!-- Logo -->
             <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
-                    <i data-lucide="bot" class="w-5 h-5 text-primary"></i>
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-[0_4px_12px_-2px_rgba(8,145,178,0.4)]">
+                    <i data-lucide="bot" class="w-5 h-5 text-white"></i>
                 </div>
-                <span class="font-semibold text-sm">ElBot</span>
+                <span class="font-semibold text-text-main tracking-tight">ElBot</span>
+            </div>
+
+            <!-- Dynamic Island — pill morphing (idle / listening / thinking / speaking) -->
+            <div id="voiceIndicator" class="dynamic-island is-idle">
+                <div class="island-content">
+                    <div id="waveformBars" class="island-wave hidden">
+                        <div class="waveform-bar" data-bar="0"></div>
+                        <div class="waveform-bar" data-bar="1"></div>
+                        <div class="waveform-bar" data-bar="2"></div>
+                        <div class="waveform-bar" data-bar="3"></div>
+                        <div class="waveform-bar" data-bar="4"></div>
+                    </div>
+                    <div id="typingDots" class="island-dots hidden">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                    <p id="voiceStatus" class="island-status">ElBot</p>
+                    <div id="islandIdle" class="island-idle-dot"></div>
+                </div>
             </div>
 
             <!-- Status & Actions -->
-            <div class="flex items-center gap-3">
-                <div id="connectionStatus" class="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 rounded-lg text-xs">
-                    <span class="w-1.5 h-1.5 bg-secondary rounded-full"></span>
-                    <span class="text-slate-400">Online</span>
+            <div class="flex items-center gap-2">
+                <div id="connectionStatus" class="flex items-center gap-1.5 px-2.5 py-1 bg-bg-accent border border-border-light rounded-full text-xs">
+                    <span class="w-1.5 h-1.5 bg-primary rounded-full status-online"></span>
+                    <span class="text-text-muted">Online</span>
                 </div>
-                <a href="/settings" class="w-8 h-8 flex items-center justify-center hover:bg-slate-800 rounded-lg transition-colors" aria-label="Pengaturan">
-                    <i data-lucide="settings" class="w-4 h-4 text-slate-400"></i>
+                <a href="/settings" class="btn-icon w-9 h-9 hover:bg-bg-accent text-text-muted hover:text-text-main" aria-label="Pengaturan">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
                 </a>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="pt-16 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <!-- Main Content — full-height flex layout so the chat column scrolls on its own -->
+    <main class="pt-14 pb-[76px] h-screen flex flex-col max-w-3xl mx-auto">
 
         <!-- Device Quick Status Panel -->
-        <section class="mt-6 mb-8">
+        <section class="flex-shrink-0 px-4 sm:px-6 lg:px-8 pt-4 pb-3">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-xs font-medium text-slate-500 uppercase tracking-wider">Perangkat Aktif</h2>
-                <span id="deviceCount" class="text-xs text-slate-500">0 perangkat</span>
+                <h2 class="text-xs font-medium text-text-muted uppercase tracking-wider">Perangkat Aktif</h2>
+                <span id="deviceCount" class="text-xs text-text-muted">0 perangkat</span>
             </div>
             <div id="devicePanel" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
         </section>
 
-        <!-- Chat Container -->
-        <section class="mb-6">
-            <div id="chatContainer" class="space-y-4 min-h-[400px] max-w-3xl mx-auto"></div>
-        </section>
-
-        <!-- Voice Indicator (4 States) -->
-        <div id="voiceIndicator" class="hidden mb-6">
-            <div class="flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full max-w-xs mx-auto">
-                <div id="waveformBars" class="flex items-center gap-0.5">
-                    <div class="waveform-bar w-0.5 bg-primary/60 rounded-full" data-bar="0"></div>
-                    <div class="waveform-bar w-0.5 bg-primary/60 rounded-full" data-bar="1"></div>
-                    <div class="waveform-bar w-0.5 bg-primary/60 rounded-full" data-bar="2"></div>
-                    <div class="waveform-bar w-0.5 bg-primary/60 rounded-full" data-bar="3"></div>
-                    <div class="waveform-bar w-0.5 bg-primary/60 rounded-full" data-bar="4"></div>
-                </div>
-                <div id="typingDots" class="hidden flex items-center gap-1">
-                    <div class="typing-dot w-1.5 h-1.5 bg-accent rounded-full"></div>
-                    <div class="typing-dot w-1.5 h-1.5 bg-accent rounded-full"></div>
-                    <div class="typing-dot w-1.5 h-1.5 bg-accent rounded-full"></div>
-                </div>
-                <p class="text-xs text-slate-400 ml-1" id="voiceStatus">Mendengarkan...</p>
+        <!-- Chat Container — scrollable column -->
+        <section class="flex-1 min-h-0 px-4 sm:px-6 lg:px-8 flex flex-col">
+            <div id="chatContainer" class="flex-1 min-h-0 overflow-y-auto scroll-smooth space-y-4 py-2">
             </div>
-        </div>
+        </section>
     </main>
 
     <!-- Input Area -->
-    <div class="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-sm border-t border-slate-800 p-2 sm:p-3 z-40">
+    <div class="fixed bottom-0 inset-x-0 bg-surface/90 backdrop-blur-md border-t border-border-light shadow-float p-2 sm:p-3 z-40">
         <div class="max-w-3xl mx-auto">
             <div class="flex gap-2 items-end">
                 <div class="flex-1 relative">
                     <textarea id="messageInput" rows="1"
                         placeholder="Ketik atau gunakan suara..."
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-none transition-all"
+                        class="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-sm text-text-main placeholder-text-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none transition-all"
                         aria-label="Ketik pesan"></textarea>
                 </div>
                 <button id="micButton"
-                    class="flex-shrink-0 w-11 h-11 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center justify-center transition-colors group"
-                    aria-label="Mikrofon">
-                    <i data-lucide="mic" class="w-5 h-5 mic-icon text-slate-400 group-hover:text-slate-200 transition-colors"></i>
+                    class="btn-icon flex-shrink-0 w-11 h-11 bg-bg-main hover:bg-bg-accent border border-border-light text-text-muted hover:text-primary"
+                    aria-label="Mulai merekam">
+                    <i data-lucide="mic" class="w-5 h-5 mic-icon"></i>
                 </button>
                 <button id="sendButton"
-                    class="flex-shrink-0 w-11 h-11 bg-primary hover:bg-primary/90 rounded-xl flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    class="btn-icon flex-shrink-0 w-11 h-11 bg-primary hover:bg-primary-dark shadow-[0_4px_12px_-2px_rgba(8,145,178,0.45)]"
                     aria-label="Kirim">
                     <i data-lucide="send" class="w-5 h-5 text-white"></i>
                 </button>

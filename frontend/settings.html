@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +14,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -22,14 +21,22 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        primary: '#3B82F6',
-                        'primary-glow': '#60A5FA',
-                        secondary: '#10B981',
+                        primary: '#0891B2',
+                        'primary-dark': '#0E7490',
+                        secondary: '#22D3EE',
                         accent: '#F59E0B',
                         danger: '#EF4444',
-                        surface: '#0A0F1E',
-                        'surface-muted': '#111827',
-                        'surface-raised': '#1E293B',
+                        success: '#10B981',
+                        surface: '#FFFFFF',
+                        'bg-main': '#F0F9FF',
+                        'bg-accent': '#ECFEFF',
+                        'text-main': '#164E63',
+                        'text-muted': '#64748B',
+                        'border-light': '#E2E8F0',
+                    },
+                    boxShadow: {
+                        soft: '0 1px 3px 0 rgba(15,23,42,0.08), 0 1px 2px -1px rgba(15,23,42,0.06)',
+                        float: '0 4px 12px -2px rgba(15,23,42,0.08), 0 2px 6px -2px rgba(15,23,42,0.05)',
                     },
                 },
             },
@@ -45,34 +52,34 @@
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
-<body class="bg-surface text-slate-100 font-sans antialiased min-h-screen">
+<body class="bg-bg-main text-text-main font-sans antialiased min-h-screen">
 
     <!-- Header -->
-    <header class="fixed top-0 inset-x-0 h-14 bg-surface/95 backdrop-blur-sm border-b border-slate-800 z-50">
-        <div class="max-w-6xl mx-auto px-4 h-full flex items-center justify-between">
+    <header class="fixed top-0 inset-x-0 h-14 bg-surface/90 backdrop-blur-md border-b border-border-light shadow-soft z-50">
+        <div class="max-w-3xl mx-auto px-4 h-full flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <a href="/" class="w-8 h-8 flex items-center justify-center hover:bg-slate-800 rounded-lg transition-colors" aria-label="Kembali">
-                    <i data-lucide="arrow-left" class="w-4 h-4 text-slate-400"></i>
+                <a href="/" class="btn-icon w-9 h-9 hover:bg-bg-accent text-text-muted hover:text-text-main" aria-label="Kembali">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
                 </a>
-                <h1 class="font-semibold text-sm">Pengaturan</h1>
+                <h1 class="font-semibold text-sm text-text-main">Pengaturan</h1>
             </div>
-            <a href="/" class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+            <a href="/" class="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center hover:bg-primary/20 transition-colors">
                 <i data-lucide="bot" class="w-4 h-4 text-primary"></i>
             </a>
         </div>
     </header>
 
     <!-- Tabs -->
-    <nav class="fixed top-14 inset-x-0 bg-surface/95 backdrop-blur-sm border-b border-slate-800 z-40">
-        <div class="max-w-6xl mx-auto px-2 sm:px-4">
+    <nav class="fixed top-14 inset-x-0 bg-surface/90 backdrop-blur-md border-b border-border-light z-40">
+        <div class="max-w-3xl mx-auto px-2 sm:px-4">
             <div class="flex gap-1 overflow-x-auto scrollbar-hide">
-                <button class="tab-btn active flex-shrink-0 px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-medium border-b-2 border-primary text-primary transition-colors cursor-pointer" data-tab="devices">
+                <button class="tab-btn active flex-shrink-0 px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-medium border-b-2 border-primary text-primary cursor-pointer" data-tab="devices">
                     <i data-lucide="cpu" class="w-3.5 h-3.5 inline mr-1.5"></i>Perangkat
                 </button>
-                <button class="tab-btn flex-shrink-0 px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors cursor-pointer" data-tab="firmware">
+                <button class="tab-btn flex-shrink-0 px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-medium border-b-2 border-transparent text-text-muted hover:text-text-main cursor-pointer" data-tab="firmware">
                     <i data-lucide="upload-cloud" class="w-3.5 h-3.5 inline mr-1.5"></i>Firmware
                 </button>
-                <button class="tab-btn flex-shrink-0 px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors cursor-pointer" data-tab="general">
+                <button class="tab-btn flex-shrink-0 px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-medium border-b-2 border-transparent text-text-muted hover:text-text-main cursor-pointer" data-tab="general">
                     <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1.5"></i>Umum
                 </button>
             </div>
@@ -80,54 +87,56 @@
     </nav>
 
     <!-- Tab Content -->
-    <main class="pt-28 pb-12 px-3 sm:px-4 lg:px-6 max-w-6xl mx-auto">
+    <main class="pt-28 pb-12 px-3 sm:px-4 lg:px-6 max-w-3xl mx-auto">
 
         <!-- Tab: Perangkat -->
         <section id="tab-devices" class="tab-content">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h2 class="text-lg font-semibold text-slate-100">Manajemen Perangkat</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Kelola perangkat ESP32 yang terhubung</p>
+                    <h2 class="text-lg font-semibold text-text-main">Manajemen Perangkat</h2>
+                    <p class="text-xs text-text-muted mt-0.5">Kelola perangkat ESP32 yang terhubung</p>
                 </div>
                 <button
                     id="addDeviceBtn"
-                    class="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
-                    onclick="openDeviceModal()"
+                    class="btn btn-primary px-4 py-2 text-sm shadow-[0_4px_12px_-2px_rgba(8,145,178,0.4)]"
+                    onclick="window.openDeviceModal()"
                 >
                     <i data-lucide="plus" class="w-4 h-4"></i>Tambah Perangkat
                 </button>
             </div>
 
             <!-- Device Table -->
-            <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div class="card overflow-hidden">
                 <!-- Desktop Table View -->
                 <div class="hidden sm:block overflow-x-auto">
                     <table class="w-full">
                         <thead>
-                            <tr class="border-b border-slate-700">
-                                <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 uppercase">Perangkat</th>
-                                <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 uppercase">Ruangan</th>
-                                <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 uppercase">Tipe</th>
-                                <th class="text-center px-6 py-4 text-xs font-medium text-slate-400 uppercase">Status</th>
-                                <th class="text-center px-6 py-4 text-xs font-medium text-slate-400 uppercase">Aksi</th>
+                            <tr class="border-b border-border-light bg-bg-accent">
+                                <th class="text-left px-6 py-4 text-xs font-medium text-text-muted uppercase tracking-wider">Perangkat</th>
+                                <th class="text-left px-6 py-4 text-xs font-medium text-text-muted uppercase tracking-wider">Ruangan</th>
+                                <th class="text-left px-6 py-4 text-xs font-medium text-text-muted uppercase tracking-wider">Tipe</th>
+                                <th class="text-center px-6 py-4 text-xs font-medium text-text-muted uppercase tracking-wider">Status</th>
+                                <th class="text-center px-6 py-4 text-xs font-medium text-text-muted uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody id="deviceTableBody" class="divide-y divide-slate-700">
+                        <tbody id="deviceTableBody" class="divide-y divide-border-light">
                             <!-- Rows rendered by JS -->
                         </tbody>
                     </table>
                 </div>
 
                 <!-- Mobile Card View -->
-                <div id="deviceCardsMobile" class="sm:hidden divide-y divide-slate-700">
+                <div id="deviceCardsMobile" class="sm:hidden divide-y divide-border-light">
                     <!-- Cards rendered by JS -->
                 </div>
                 <div id="noDevices" class="hidden py-16 text-center">
-                    <i data-lucide="cpu" class="w-10 h-10 mx-auto mb-3 text-slate-600"></i>
-                    <p class="text-slate-400 font-medium mb-1">Belum ada perangkat</p>
-                    <p class="text-sm text-slate-500 mb-4">Tambahkan perangkat ESP32 untuk memulai</p>
-                    <button onclick="openDeviceModal()"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium transition-colors">
+                    <div class="inline-flex items-center justify-center w-14 h-14 bg-bg-accent rounded-2xl mb-3">
+                        <i data-lucide="cpu" class="w-7 h-7 text-text-muted"></i>
+                    </div>
+                    <p class="text-text-main font-medium mb-1">Belum ada perangkat</p>
+                    <p class="text-sm text-text-muted mb-4">Tambahkan perangkat ESP32 untuk memulai</p>
+                    <button onclick="window.openDeviceModal()"
+                        class="btn btn-primary inline-flex px-4 py-2 text-sm">
                         <i data-lucide="plus" class="w-4 h-4"></i>Tambah Perangkat
                     </button>
                 </div>
@@ -137,44 +146,44 @@
         <!-- Tab: Firmware -->
         <section id="tab-firmware" class="tab-content hidden">
             <div class="mb-6">
-                <h2 class="text-lg font-semibold text-slate-100">OTA Firmware Update</h2>
-                <p class="text-xs text-slate-500 mt-0.5">Upload firmware .bin untuk ESP32 via MQTT</p>
+                <h2 class="text-lg font-semibold text-text-main">OTA Firmware Update</h2>
+                <p class="text-xs text-text-muted mt-0.5">Upload firmware .bin untuk ESP32 via MQTT</p>
             </div>
-            <div class="bg-slate-800 border border-slate-700 rounded-xl p-6">
+            <div class="card p-6">
                 <form id="firmwareForm" class="space-y-5">
                     <div>
-                        <label class="block text-sm text-slate-400 mb-1.5" for="targetDevice">Perangkat Target</label>
-                        <select id="targetDevice" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer">
+                        <label class="block text-sm text-text-muted mb-1.5" for="targetDevice">Perangkat Target</label>
+                        <select id="targetDevice" class="w-full bg-bg-main border border-border-light rounded-lg px-4 py-2.5 text-sm text-text-main focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer">
                             <option value="">Pilih perangkat...</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm text-slate-400 mb-1.5">File Firmware (.bin)</label>
-                        <div class="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
-                            <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto mb-3 text-slate-500"></i>
-                            <p class="text-sm text-slate-400 mb-1">Seret file .bin ke sini</p>
-                            <p class="text-xs text-slate-500 mb-4">atau</p>
-                            <label class="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                        <label class="block text-sm text-text-muted mb-1.5">File Firmware (.bin)</label>
+                        <div class="border-2 border-dashed border-border-light rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
+                            <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto mb-3 text-text-muted"></i>
+                            <p class="text-sm text-text-muted mb-1">Seret file .bin ke sini</p>
+                            <p class="text-xs text-text-muted mb-4">atau</p>
+                            <label class="btn btn-primary inline-flex px-4 py-2 text-sm cursor-pointer">
                                 <i data-lucide="folder-open" class="w-4 h-4"></i>Pilih File
-                                <input type="file" id="firmwareFile" accept=".bin" onchange="handleFileSelect(event)" class="hidden">
+                                <input type="file" id="firmwareFile" accept=".bin" onchange="window.handleFileSelect(event)" class="hidden">
                             </label>
-                            <div id="filePreview" class="hidden mt-3 p-3 bg-slate-900 rounded-lg text-sm">
-                                <span id="fileName" class="text-slate-300 font-medium"></span>
-                                <span id="fileSize" class="text-slate-500 ml-2 text-xs"></span>
+                            <div id="filePreview" class="hidden mt-3 p-3 bg-bg-accent rounded-lg text-sm">
+                                <span id="fileName" class="text-text-main font-medium"></span>
+                                <span id="fileSize" class="text-text-muted ml-2 text-xs"></span>
                             </div>
                         </div>
                     </div>
                     <div id="uploadProgress" class="hidden">
                         <div class="flex justify-between text-xs mb-1.5">
-                            <span class="text-slate-400">Progress</span>
-                            <span id="progressPercent" class="text-slate-300 font-medium">0%</span>
+                            <span class="text-text-muted">Progress</span>
+                            <span id="progressPercent" class="text-text-main font-medium">0%</span>
                         </div>
-                        <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                        <div class="w-full bg-bg-main rounded-full h-2 overflow-hidden">
                             <div id="progressBar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                         </div>
                     </div>
                     <button type="submit" id="uploadBtn"
-                        class="px-6 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="btn btn-primary px-6 py-2.5 text-sm">
                         <i data-lucide="upload" class="w-4 h-4"></i>Upload & Kirim
                     </button>
                 </form>
@@ -184,30 +193,30 @@
         <!-- Tab: Umum -->
         <section id="tab-general" class="tab-content hidden">
             <div class="mb-6">
-                <h2 class="text-lg font-semibold text-slate-100">Informasi Sistem</h2>
-                <p class="text-xs text-slate-500 mt-0.5">Konfigurasi dan status sistem ElBot</p>
+                <h2 class="text-lg font-semibold text-text-main">Informasi Sistem</h2>
+                <p class="text-xs text-text-muted mt-0.5">Konfigurasi dan status sistem ElBot</p>
             </div>
             <div class="space-y-5">
-                <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
-                    <h3 class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4">Koneksi MQTT Broker</h3>
+                <div class="card p-5">
+                    <h3 class="text-xs font-medium text-text-muted uppercase tracking-wider mb-4">Koneksi MQTT Broker</h3>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs text-slate-500 mb-1">Host</label>
-                            <p class="text-sm text-slate-200 font-medium">localhost</p>
+                            <label class="block text-xs text-text-muted mb-1">Host</label>
+                            <p class="text-sm text-text-main font-medium">localhost</p>
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-500 mb-1">Port</label>
-                            <p class="text-sm text-slate-200 font-medium font-mono">1883</p>
+                            <label class="block text-xs text-text-muted mb-1">Port</label>
+                            <p class="text-sm text-text-main font-medium font-mono">1883</p>
                         </div>
                     </div>
                 </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
-                    <h3 class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4">Tentang ElBot</h3>
+                <div class="card p-5">
+                    <h3 class="text-xs font-medium text-text-muted uppercase tracking-wider mb-4">Tentang ElBot</h3>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                        <span class="text-slate-500">Versi</span><span class="text-slate-200 font-medium">1.0.0</span>
-                        <span class="text-slate-500">AI Model</span><span class="text-slate-200 font-medium font-mono text-xs">mmf/mimo-auto</span>
-                        <span class="text-slate-500">TTS Voice</span><span class="text-slate-200 font-medium">id-ID-GadisNeural</span>
-                        <span class="text-slate-500">STT</span><span class="text-slate-200 font-medium">Google Speech API v2</span>
+                        <span class="text-text-muted">Versi</span><span class="text-text-main font-medium">1.0.0</span>
+                        <span class="text-text-muted">AI Model</span><span class="text-text-main font-medium font-mono text-xs">mmf/mimo-auto</span>
+                        <span class="text-text-muted">TTS Voice</span><span class="text-text-main font-medium">id-ID-GadisNeural</span>
+                        <span class="text-text-muted">STT</span><span class="text-text-main font-medium">Google Speech API v2</span>
                     </div>
                 </div>
             </div>
@@ -216,52 +225,59 @@
 
     <!-- Device Modal (Hidden by default) -->
     <div id="deviceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeDeviceModal()"></div>
-        <div class="relative bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md">
+        <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="window.closeDeviceModal()"></div>
+        <div class="relative bg-surface border border-border-light rounded-2xl p-6 w-full max-w-md shadow-lg modal-enter">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-semibold" id="modalTitle">Tambah Perangkat</h3>
-                <button onclick="closeDeviceModal()" class="p-1 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
+                <h3 class="text-lg font-semibold text-text-main" id="modalTitle">Tambah Perangkat</h3>
+                <button onclick="window.closeDeviceModal()" class="btn-icon w-8 h-8 hover:bg-bg-accent text-text-muted">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
             <form id="deviceForm" class="space-y-4">
                 <input type="hidden" id="deviceIdOriginal">
                 <div>
-                    <label class="block text-sm text-slate-400 mb-1.5" for="dDeviceId">Device ID</label>
+                    <label class="block text-sm text-text-muted mb-1.5" for="dDeviceId">Device ID</label>
                     <input type="text" id="dDeviceId" required placeholder="esp32-ruang-tamu"
-                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                           class="w-full bg-bg-main border border-border-light rounded-lg px-4 py-2.5 text-sm text-text-main placeholder-text-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                            pattern="[a-zA-Z0-9_-]+">
                 </div>
                 <div>
-                    <label class="block text-sm text-slate-400 mb-1.5" for="dName">Nama Perangkat</label>
+                    <label class="block text-sm text-text-muted mb-1.5" for="dName">Nama Perangkat</label>
                     <input type="text" id="dName" required placeholder="Lampu Ruang Tamu"
-                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                           class="w-full bg-bg-main border border-border-light rounded-lg px-4 py-2.5 text-sm text-text-main placeholder-text-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
                 </div>
                 <div>
-                    <label class="block text-sm text-slate-400 mb-1.5" for="dRoom">Ruangan</label>
+                    <label class="block text-sm text-text-muted mb-1.5" for="dRoom">Ruangan</label>
                     <input type="text" id="dRoom" required placeholder="Ruang Tamu"
-                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                           class="w-full bg-bg-main border border-border-light rounded-lg px-4 py-2.5 text-sm text-text-main placeholder-text-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
                 </div>
                 <div>
-                    <label class="block text-sm text-slate-400 mb-1.5" for="dType">Tipe</label>
-                    <select id="dType" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary cursor-pointer">
+                    <label class="block text-sm text-text-muted mb-1.5" for="dType">Tipe</label>
+                    <select id="dType" class="w-full bg-bg-main border border-border-light rounded-lg px-4 py-2.5 text-sm text-text-main focus:outline-none focus:border-primary cursor-pointer">
                         <option value="relay">Relay</option>
                         <option value="lampu">Lampu</option>
                         <option value="sensor">Sensor</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm text-slate-400 mb-1.5" for="dRelayCount">Jumlah Relay</label>
+                    <label class="block text-sm text-text-muted mb-1.5" for="dRelayCount">Jumlah Relay</label>
                     <input type="number" id="dRelayCount" value="4" min="1" max="16"
-                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                           class="w-full bg-bg-main border border-border-light rounded-lg px-4 py-2.5 text-sm text-text-main focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                           onchange="window.updateRelayNameInputs()">
+                </div>
+                <div>
+                    <label class="block text-sm text-text-muted mb-1.5">Nama Relay</label>
+                    <div id="relayNamesContainer" class="space-y-2">
+                        <!-- Dynamically generated inputs for each relay -->
+                    </div>
                 </div>
                 <div class="flex gap-3 pt-2">
                     <button type="submit" id="modalSubmitBtn"
-                            class="flex-1 px-4 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                            class="btn btn-primary flex-1 py-2.5 text-sm">
                         Simpan
                     </button>
-                    <button type="button" onclick="closeDeviceModal()"
-                            class="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                    <button type="button" onclick="window.closeDeviceModal()"
+                            class="btn btn-ghost flex-1 py-2.5 text-sm">
                         Batal
                     </button>
                 </div>
@@ -270,6 +286,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/settings.js" type="module"></script>
+    <script src="/static/js/settings.js?v=20260623" type="module"></script>
 </body>
 </html>
