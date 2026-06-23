@@ -198,6 +198,10 @@ async def health_check():
 static_dir = FRONTEND_DIR / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+# Serve firmware source files (for template preview/download in settings)
+FIRMWARE_DIR = FRONTEND_DIR.parent / "firmware"
+app.mount("/firmware", StaticFiles(directory=str(FIRMWARE_DIR)), name="firmware")
+
 
 def get_mqtt_service() -> MQTTService:
     """Dependency for getting MQTT service"""

@@ -12,6 +12,8 @@
     loadDevices();
     setupDeviceForm();
     setupFirmwareForm();
+    loadFirmwareTemplate();
+    setupTemplateButtons();
   }
 
   // ─── Tabs ───────────────────────────────────────
@@ -258,6 +260,40 @@
   };
 
   function formatSize(bytes) { return bytes < 1024 ? bytes + ' B' : bytes < 1048576 ? (bytes / 1024).toFixed(1) + ' KB' : (bytes / 1048576).toFixed(1) + ' MB'; }
+
+  // ─── Template Firmware (preview & download .ino) ──
+  async function loadFirmwareTemplate() {
+    const codeEl = document.getElementById('templateCode');
+    const sizeEl = document.getElementById('templateSize');
+    try {
+      const resp = await fetch('/firmware/esp32_relay/esp32_relay.ino');
+      if (!resp.ok) throw new Error('Gagal load template');
+      const code = await resp.text();
+      codeEl.textContent = code;
+      if (sizeEl) sizeEl.textContent = formatSize(new Blob([code]).size);
+    } catch (err) {
+      console.error('loadFirmwareTemplate gagal:', err);
+      codeEl.textContent = '// Gagal memuat template firmware';
+    }
+  }
+
+  function setupTemplateButtons() {
+    const copyBtn = document.getElementById('copyTemplateBtn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        const code = document.getElementById('templateCode').textContent;
+        try {
+          await navigator.clipboard.writeText(code);
+          const orig = copyBtn.innerHTML;
+          copyBtn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>Disalin';
+          lucide.createIcons();
+          setTimeout(() => { copyBtn.innerHTML = orig; lucide.createIcons(); }, 1500);
+        } catch (_) {
+          alert('Gagal menyalin source');
+        }
+      });
+    }
+  }
 
   init();
 })();

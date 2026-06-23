@@ -188,6 +188,32 @@
                     </button>
                 </form>
             </div>
+
+            <!-- Template Firmware — lihat & download source .ino -->
+            <div class="card p-6 mt-5">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-text-main">Template Firmware</h3>
+                        <p class="text-xs text-text-muted mt-0.5">Source code ESP32 untuk flash manual via Arduino IDE</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="copyTemplateBtn" class="btn btn-ghost px-3 py-1.5 text-xs">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>Salin
+                        </button>
+                        <a href="/firmware/esp32_relay/esp32_relay.ino" download
+                           class="btn btn-primary px-3 py-1.5 text-xs">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>Download .ino
+                        </a>
+                    </div>
+                </div>
+                <div class="bg-bg-main border border-border-light rounded-lg overflow-hidden">
+                    <div class="flex items-center justify-between px-3 py-1.5 border-b border-border-light bg-bg-accent">
+                        <span class="text-xs font-mono text-text-muted">esp32_relay/esp32_relay.ino</span>
+                        <span id="templateSize" class="text-xs text-text-muted"></span>
+                    </div>
+                    <pre id="templateCode" class="p-3 text-xs font-mono text-text-main overflow-auto max-h-96 leading-relaxed">Loading...</pre>
+                </div>
+            </div>
         </section>
 
         <!-- Tab: Umum -->
