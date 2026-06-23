@@ -317,53 +317,57 @@
     voiceIndicator.classList.add(stateClass);
   }
 
+  // Fade-based visibility toggle (opacity instead of display:none for smooth transitions)
+  function setElVisible(el, visible) {
+    if (!el) return;
+    el.classList.toggle('island-hidden', !visible);
+    el.classList.toggle('island-visible', visible);
+  }
+
   function showVoiceIndicator(state) {
     // Always hide the idle dot while an activity state is active.
-    if (islandIdle) islandIdle.classList.add('hidden');
+    setElVisible(islandIdle, false);
 
     switch (state) {
       case 'listening':
         setVoiceState('is-listening');
         voiceStatus.textContent = 'Mendengarkan...';
-        voiceStatus.classList.remove('hidden');
-        if (waveformBars) waveformBars.classList.remove('hidden');
-        if (typingDots) typingDots.classList.add('hidden');
+        setElVisible(voiceStatus, true);
+        setElVisible(waveformBars, true);
+        setElVisible(typingDots, false);
         break;
       case 'user_speaking':
         setVoiceState('is-user-speaking');
         voiceStatus.textContent = 'Anda berbicara...';
-        voiceStatus.classList.remove('hidden');
-        if (waveformBars) waveformBars.classList.remove('hidden');
-        if (typingDots) typingDots.classList.add('hidden');
+        setElVisible(voiceStatus, true);
+        setElVisible(waveformBars, true);
+        setElVisible(typingDots, false);
         break;
       case 'thinking':
         setVoiceState('is-thinking');
         voiceStatus.textContent = 'Berpikir...';
-        voiceStatus.classList.remove('hidden');
-        if (waveformBars) waveformBars.classList.add('hidden');
-        if (typingDots) typingDots.classList.remove('hidden');
+        setElVisible(voiceStatus, true);
+        setElVisible(waveformBars, false);
+        setElVisible(typingDots, true);
         break;
       case 'speaking':
         setVoiceState('is-speaking');
         voiceStatus.textContent = 'ElBot berbicara...';
-        voiceStatus.classList.remove('hidden');
-        if (waveformBars) waveformBars.classList.remove('hidden');
-        if (typingDots) typingDots.classList.add('hidden');
+        setElVisible(voiceStatus, true);
+        setElVisible(waveformBars, true);
+        setElVisible(typingDots, false);
         break;
     }
-    // Keep the indicator in view: it lives inline at the bottom of the chat,
-    // so scroll there whenever a new voice state appears.
-    scrollChatToBottom();
   }
 
   function hideVoiceIndicator() {
     // Dynamic Island selalu tampil — kembali ke pill idle kecil.
     setVoiceState('is-idle');
     voiceStatus.textContent = 'ElBot';
-    voiceStatus.classList.remove('hidden');
-    if (waveformBars) waveformBars.classList.add('hidden');
-    if (typingDots) typingDots.classList.add('hidden');
-    if (islandIdle) islandIdle.classList.remove('hidden');
+    setElVisible(voiceStatus, true);
+    setElVisible(waveformBars, false);
+    setElVisible(typingDots, false);
+    setElVisible(islandIdle, true);
   }
 
   function handleStatus(state) {
