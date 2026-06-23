@@ -64,15 +64,18 @@ class TTSService:
         return b''.join(chunks)
 
     def split_into_clauses(self, text: str) -> list[str]:
-        """Split text into clauses on sentence boundaries.
+        """Split text into clauses on natural pause boundaries.
+
+        Splits on sentence punctuation (.!?), commas, semicolons, colons
+        followed by whitespace, and on newlines. Smaller clauses synthesize
+        faster and each becomes a self-contained MP3 blob for reliable
+        browser decoding.
 
         Args:
             text: Input text
 
         Returns:
-            List of sentence clauses
+            List of clause strings
         """
-        # Split on sentence-ending punctuation followed by whitespace
-        clauses = re.split(r'(?<=[.!?])\s+', text)
-        # Filter out empty strings
+        clauses = re.split(r'(?<=[.!?,:;])\s+|\n+', text)
         return [clause for clause in clauses if clause.strip()]

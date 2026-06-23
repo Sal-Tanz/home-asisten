@@ -2,11 +2,8 @@ import asyncio
 import json
 import logging
 import subprocess
-import tempfile
-from pathlib import Path
 from typing import Optional
 
-import aiofiles
 import requests
 
 from app.config import get_settings
@@ -57,7 +54,7 @@ class STTService:
             }
 
         except Exception as e:
-            logger.error(f"STT error: {e}")
+            logger.error(f"Transcription error: {e}", exc_info=True)
             return {"transcript": "", "confidence": 0.0, "error": str(e)}
 
     async def _convert_to_flac(self, audio_data: bytes, input_format: str) -> Optional[bytes]:
@@ -99,8 +96,9 @@ class STTService:
         stdout, stderr = proc.communicate(input=audio_data, timeout=10)
 
         if proc.returncode != 0:
-            logger.error(f"ffmpeg stderr: {stderr.decode()}")
-            raise RuntimeError(f"ffmpeg failed: {stderr.decode()[:200]}")
+            stderr_text = stderr.decode('utf-8', errors='replace')
+            logger.error(f"ffmpeg failed (rc={proc.returncode}): {stderr_text[:500]}")
+            raise RuntimeError(f"ffmpeg failed: {stderr_text[:500]}")
 
         return stdout
 

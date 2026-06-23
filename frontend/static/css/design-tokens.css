@@ -1,51 +1,75 @@
 /* ═══════════════════════════════════════════
-   ElBot Home Asisten — OLED Pro Design Tokens
-   Shared across all pages
+   ElBot Home Asisten — Design Tokens
+   Single source of truth (Light Cyan Theme)
+   Fonts are loaded via <link> in each HTML page.
    ═══════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
 :root {
-  /* Surfaces */
-  --surface: #0A0F1E;
-  --surface-muted: #111827;
-  --surface-raised: #1E293B;
-  --surface-overlay: rgba(0, 0, 0, 0.6);
-
-  /* Borders */
-  --border: #1E293B;
-  --border-accent: #334155;
-
-  /* Text */
-  --text-primary: #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-
-  /* Brand */
-  --primary: #3B82F6;
-  --primary-glow: #60A5FA;
+  /* ── Brand ─────────────────────────────────── */
+  --primary: #0891B2;
+  --primary-dark: #0E7490;
+  --primary-light: #22D3EE;
   --secondary: #10B981;
   --accent: #F59E0B;
   --danger: #EF4444;
 
-  /* Radius */
+  /* ── Surfaces ──────────────────────────────── */
+  --bg-main: #F0F9FF;          /* page background */
+  --bg-accent: #ECFEFF;        /* subtle tinted surface */
+  --surface: #FFFFFF;          /* cards, panels */
+  --surface-overlay: rgba(15, 23, 42, 0.55);
+
+  /* ── Text ──────────────────────────────────── */
+  --text-main: #164E63;
+  --text-muted: #64748B;
+  --text-soft: #94A3B8;
+
+  /* ── Borders ───────────────────────────────── */
+  --border-light: #E2E8F0;
+  --border-strong: #CBD5E1;
+
+  /* ── Radius ────────────────────────────────── */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 9999px;
+
+  /* ── Spacing scale (rem) ───────────────────── */
+  --space-1: 0.25rem;   /*  4px */
+  --space-2: 0.5rem;    /*  8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.5rem;    /* 24px */
+  --space-6: 2rem;      /* 32px */
+  --space-7: 3rem;      /* 48px */
+
+  /* ── Shadows (soft, layered) ───────────────── */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 12px 32px -8px rgba(15, 23, 42, 0.15), 0 4px 12px -4px rgba(15, 23, 42, 0.08);
+  --shadow-primary: 0 8px 24px -6px rgba(8, 145, 178, 0.35);
+
+  /* ── Transitions ───────────────────────────── */
+  --transition-fast: 0.15s ease-out;
+  --transition: 0.2s ease-out;
+  --transition-slow: 0.3s ease-out;
 }
 
 /* ═══════════════════════════════════════════
    Global Reset
    ═══════════════════════════════════════════ */
 
-html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--surface);
-  color: var(--text-primary);
+  background-color: var(--bg-main);
+  color: var(--text-main);
 }
 
 code, pre, .mono, kbd {
@@ -61,18 +85,23 @@ code, pre, .mono, kbd {
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
+:focus:not(:focus-visible) {
+  outline: none;
+}
 
 /* ═══════════════════════════════════════════
    Scrollbar
    ═══════════════════════════════════════════ */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-soft); }
 
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-none,
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ═══════════════════════════════════════════
    Animations
@@ -82,14 +111,14 @@ code, pre, .mono, kbd {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-in { animation: fade-in-up 0.3s ease-out; }
+.animate-fade-in { animation: fade-in-up var(--transition-slow); }
 
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--surface-raised) 25%, var(--border-accent) 50%, var(--surface-raised) 75%);
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--border-strong) 50%, var(--border-light) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: var(--radius-sm);

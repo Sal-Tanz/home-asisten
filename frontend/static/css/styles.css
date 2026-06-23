@@ -173,15 +173,14 @@ a {
   border-radius: 9999px;
   flex-shrink: 0;
   width: 100px;
-  height: 30px;
+  height: 37px;
   padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: clip;
-  will-change: width, height;
+  will-change: width;
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
               padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
               background 0.4s ease,
               box-shadow 0.4s ease;
@@ -276,17 +275,17 @@ a {
 .island-dots .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
 /* ── State morphing ── */
+/* Tinggi konsisten 37px di semua state (seperti Dynamic Island iPhone asli).
+   Hanya lebar yang berubah saat morph antar state. */
 
 /* IDLE: pill kecil, hanya titik */
 .dynamic-island.is-idle {
   width: 100px;
-  height: 30px;
 }
 
 /* LISTENING: pill mengembang, waveform + teks */
 .dynamic-island.is-listening {
-  width: 220px;
-  height: 40px;
+  width: 200px;
   box-shadow: 0 0 20px rgba(34, 211, 238, 0.12);
 }
 .dynamic-island.is-listening .island-wave .waveform-bar {
@@ -295,8 +294,7 @@ a {
 
 /* USER SPEAKING: pill lebih lebar, bar reaktif volume */
 .dynamic-island.is-user-speaking {
-  width: 250px;
-  height: 44px;
+  width: 220px;
   background: #0a0a0a;
   box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2), 0 0 25px rgba(34, 211, 238, 0.15);
 }
@@ -307,15 +305,13 @@ a {
 
 /* THINKING: pill sedang, typing dots + teks */
 .dynamic-island.is-thinking {
-  width: 160px;
-  height: 36px;
+  width: 150px;
   box-shadow: 0 0 15px rgba(8, 145, 178, 0.12);
 }
 
 /* SPEAKING (bot): pill mengembang, waveform cepat + teks */
 .dynamic-island.is-speaking {
-  width: 230px;
-  height: 42px;
+  width: 210px;
   box-shadow: 0 0 20px rgba(16, 185, 129, 0.12);
 }
 .dynamic-island.is-speaking .island-wave .waveform-bar {
@@ -329,6 +325,23 @@ a {
 @keyframes wave-speak {
   0%, 100% { height: 8px; opacity: 0.4; }
   50%      { height: 22px; opacity: 1; }
+}
+
+/* ── Dynamic Island: mobile responsive ────── */
+/* Hanya lebar yang berubah, tinggi tetap 37px. */
+@media (max-width: 480px) {
+  .dynamic-island.is-listening     { width: 150px; }
+  .dynamic-island.is-user-speaking { width: 170px; }
+  .dynamic-island.is-speaking      { width: 155px; }
+  .dynamic-island.is-thinking      { width: 120px; }
+
+  .island-status { font-size: 9px; }
+
+  .island-wave { gap: 2px; }
+  .island-wave .waveform-bar { width: 2px; }
+
+  .island-dots { gap: 3px; }
+  .island-dots .typing-dot { width: 5px; height: 5px; }
 }
 
 /* ── Modal animation ───────────────────────── */

@@ -29,9 +29,9 @@
 // ═══════════════════════════════════════════════════
 // CONFIGURATION - Update these for your setup
 // ═══════════════════════════════════════════════════
-const char* WIFI_SSID = "Wifi-Elektro-Pengajar";
-const char* WIFI_PASSWORD = "yangtautauaja";
-const char* MQTT_BROKER = "panel.elektrounsub.com";
+const char* WIFI_SSID = "";
+const char* WIFI_PASSWORD = "";
+const char* MQTT_BROKER = "";
 const int MQTT_PORT = 1883;
 const char* MQTT_USERNAME = "";             // Leave empty if no auth
 const char* MQTT_PASSWORD = "";             // Leave empty if no auth

@@ -16,14 +16,14 @@ class Settings(BaseSettings):
     # AI API
     ai_api_base_url: str = "https://api-ai.elektrounsub.com/v1"
     ai_api_key: str = ""
-    ai_model_name: str = "mmf/mimo-auto"
+    ai_model_name: str = "nvidia/openai/gpt-oss-120b"
 
     # STT
     google_stt_key: str = ""
     google_stt_url: str = "https://www.google.com/speech-api/v2/recognize"
 
     # TTS
-    tts_voice: str = "id-ID-GadisNeural"
+    tts_voice: str = "id-ID-ArdiNeural"
     tts_rate: str = "+0%"
     tts_volume: str = "+0%"
 

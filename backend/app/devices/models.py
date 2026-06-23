@@ -12,6 +12,7 @@ class Device(Base):
     room = Column(String, nullable=False, index=True)
     type = Column(String, nullable=False)
     relay_count = Column(Integer, default=4, nullable=False)
+    relay_names = Column(Text, default='{}', nullable=False)
     state = Column(Text, nullable=False)  # JSON string
     is_online = Column(Boolean, default=False, nullable=False)
     last_seen = Column(DateTime)

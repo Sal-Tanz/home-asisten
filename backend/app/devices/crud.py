@@ -8,14 +8,19 @@ from app.devices.schemas import DeviceCreate, DeviceUpdate
 
 async def create_device(db: AsyncSession, device_data: DeviceCreate) -> Device:
     """Create a new device with all relays initialized to OFF"""
+    if not device_data.relay_names:
+        device_data.relay_names = {f"relay_{i}": f"Relay {i}" for i in range(1, device_data.relay_count + 1)}
+    device_data.relay_names = json.dumps(device_data.relay_names) if isinstance(device_data.relay_names, dict) else device_data.relay_names
+
     initial_state = {f"relay_{i}": "OFF" for i in range(1, device_data.relay_count + 1)}
-    
+
     device = Device(
         device_id=device_data.device_id,
         name=device_data.name,
         room=device_data.room,
         type=device_data.type,
         relay_count=device_data.relay_count,
+        relay_names=device_data.relay_names,
         state=json.dumps(initial_state),
         is_online=False,
     )
@@ -48,6 +53,11 @@ async def update_device(
     
     update_data = device_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
+        # relay_names is stored as a JSON string in a Text column, so the dict
+        # coming from the schema must be serialized before setattr (mirrors
+        # create_device). Other fields (name/room/type/relay_count) bind fine.
+        if key == "relay_names" and isinstance(value, dict):
+            value = json.dumps(value)
         setattr(device, key, value)
     
     await db.commit()

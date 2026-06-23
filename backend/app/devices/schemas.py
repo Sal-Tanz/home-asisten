@@ -11,6 +11,7 @@ class DeviceCreate(BaseModel):
     room: str = Field(..., description="Room location")
     type: str = Field(default="relay", description="Device type")
     relay_count: int = Field(default=4, ge=1, le=8, description="Number of relays")
+    relay_names: Optional[Dict[str, str]] = Field(default_factory=dict, description="Custom names for each relay")
 
 
 class DeviceUpdate(BaseModel):
@@ -19,6 +20,7 @@ class DeviceUpdate(BaseModel):
     room: Optional[str] = None
     type: Optional[str] = None
     relay_count: Optional[int] = Field(None, ge=1, le=8)
+    relay_names: Optional[Dict[str, str]] = Field(None, description="Custom names for each relay")
     is_online: Optional[bool] = None
 
 
@@ -36,6 +38,7 @@ class DeviceResponse(BaseModel):
     room: str
     type: str
     relay_count: int
+    relay_names: Dict[str, str]
     state: Dict[str, str]  # Dict for API response (stored as JSON string in DB)
     is_online: bool
     last_seen: Optional[datetime]
@@ -49,6 +52,17 @@ class DeviceResponse(BaseModel):
         if isinstance(v, str):
             return json.loads(v)
         return v
+
+    @field_validator('relay_names', mode='before')
+    @classmethod
+    def parse_relay_names(cls, v):
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return v or {}
 
     class Config:
         from_attributes = True

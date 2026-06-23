@@ -13,7 +13,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -21,14 +20,22 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        primary: '#3B82F6',
-                        primary_glow: '#60A5FA',
-                        secondary: '#10B981',
+                        primary: '#0891B2',
+                        'primary-dark': '#0E7490',
+                        secondary: '#22D3EE',
                         accent: '#F59E0B',
                         danger: '#EF4444',
-                        surface: '#0A0F1E',
-                        surface_muted: '#111827',
-                        surface_raised: '#1E293B',
+                        success: '#10B981',
+                        surface: '#FFFFFF',
+                        'bg-main': '#F0F9FF',
+                        'bg-accent': '#ECFEFF',
+                        'text-main': '#164E63',
+                        'text-muted': '#64748B',
+                        'border-light': '#E2E8F0',
+                    },
+                    boxShadow: {
+                        soft: '0 1px 3px 0 rgba(15,23,42,0.08), 0 1px 2px -1px rgba(15,23,42,0.06)',
+                        float: '0 4px 12px -2px rgba(15,23,42,0.08), 0 2px 6px -2px rgba(15,23,42,0.05)',
                     },
                 },
             },
@@ -37,49 +44,52 @@
 
     <!-- Design Tokens -->
     <link rel="stylesheet" href="/static/css/design-tokens.css">
-</head>
-<body class="bg-surface min-h-screen flex items-center justify-center p-4 font-sans">
 
-    <div class="w-full max-w-[400px] bg-surface-raised border border-slate-700 rounded-2xl p-8 shadow-2xl animate-fade-in">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-bg-main min-h-screen flex items-center justify-center p-4 font-sans">
+
+    <div class="w-full max-w-[400px] bg-surface border border-border-light rounded-2xl p-8 shadow-float animate-fade-in">
         <!-- Logo -->
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-primary/20 rounded-2xl mb-4">
-                <i data-lucide="bot" class="w-8 h-8 text-primary"></i>
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4 shadow-[0_8px_24px_-6px_rgba(8,145,178,0.4)]">
+                <i data-lucide="bot" class="w-8 h-8 text-white"></i>
             </div>
-            <h1 class="text-2xl font-semibold text-slate-100 mb-1">ElBot</h1>
-            <p class="text-sm text-slate-400">Masuk untuk mengontrol rumah pintar Anda</p>
+            <h1 class="text-2xl font-semibold text-text-main mb-1 tracking-tight">ElBot</h1>
+            <p class="text-sm text-text-muted">Masuk untuk mengontrol rumah pintar Anda</p>
         </div>
 
         <!-- Form -->
         <form id="loginForm" class="space-y-5">
             <div>
-                <label for="password" class="block text-sm text-slate-400 mb-1.5">Password</label>
+                <label for="password" class="block text-sm text-text-muted mb-1.5">Password</label>
                 <div class="relative">
                     <input type="password" id="password" required
-                        class="w-full bg-surface border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all pr-10"
+                        class="w-full bg-bg-main border border-border-light rounded-xl px-4 py-3 text-sm text-text-main placeholder-text-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all pr-10"
                         placeholder="••••••••">
                     <button type="button" onclick="togglePassword()"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-700 rounded-lg transition-colors"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-bg-accent rounded-lg transition-colors"
                         aria-label="Toggle password visibility">
-                        <i data-lucide="eye-off" id="eyeIcon" class="w-4 h-4 text-slate-400"></i>
+                        <i data-lucide="eye-off" id="eyeIcon" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
             </div>
 
-            <div id="error-message" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+            <div id="error-message" class="hidden bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-xl text-sm flex items-center gap-2">
                 <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
                 <span id="errorText">Password salah</span>
             </div>
 
             <button type="submit" id="loginBtn"
-                class="w-full h-11 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="btn btn-primary w-full h-11 text-sm shadow-[0_8px_20px_-6px_rgba(8,145,178,0.45)] focus:ring-2 focus:ring-primary/50">
                 <span id="loginText">Masuk</span>
                 <div id="loginSpinner" class="hidden w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             </button>
         </form>
 
-        <p class="mt-6 text-center text-xs text-slate-500">
-            Default password: <code class="text-slate-400 bg-surface px-2 py-0.5 rounded font-mono text-xs">admin123</code>
+        <p class="mt-6 text-center text-xs text-text-muted">
+            Default password: <code class="text-primary bg-bg-accent px-2 py-0.5 rounded font-mono text-xs">admin123</code>
         </p>
     </div>
 
